@@ -30,14 +30,16 @@ public class CheckingService implements ICheckingService {
     @Autowired
     private AccountHolderRepository accountHolderRepository;
 
+    //Create new Checking account
     public Account newChecking(CheckingDTO checkingDTO) {
         AccountHolder primaryOwner = accountHolderRepository.findById(checkingDTO.getPrimaryOwnerId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid primary owner"));
-        AccountHolder secondaryOwner = checkingDTO.getSecondaryOwnerId() != null ? accountHolderRepository.findById(checkingDTO.getSecondaryOwnerId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid primary owner")) : null;
+        AccountHolder secondaryOwner = checkingDTO.getSecondaryOwnerId() != null ? accountHolderRepository.findById(checkingDTO.getSecondaryOwnerId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid secondary owner")) : null;
 
         if(Period.between(primaryOwner.getBirth(), LocalDate.now()).getYears() < 24) {
             StudentChecking studentChecking = new StudentChecking(new Money(checkingDTO.getBalance()), primaryOwner, secondaryOwner, checkingDTO.getSecretKey());
             return studentCheckingRepository.save(studentChecking);
         }
+
 
         Checking checking = new Checking(new Money(checkingDTO.getBalance()), primaryOwner, secondaryOwner, checkingDTO.getSecretKey());
         return checkingRepository.save(checking);

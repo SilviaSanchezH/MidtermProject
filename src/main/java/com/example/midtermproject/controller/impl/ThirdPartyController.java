@@ -2,6 +2,7 @@ package com.example.midtermproject.controller.impl;
 
 import com.example.midtermproject.model.Users.ThirdParty;
 import com.example.midtermproject.repository.ThirdPartyRepository;
+import com.example.midtermproject.service.interfaces.IThirdPartyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,11 +16,12 @@ import javax.validation.Valid;
 public class ThirdPartyController {
 
     @Autowired
-    private ThirdPartyRepository thirdPartyRepository;
+    private IThirdPartyService thirdPartyService;
+
 
     @PostMapping("/user/thirdparty")
     @ResponseStatus(HttpStatus.CREATED)
     public ThirdParty newThirdParty(@RequestBody @Valid ThirdParty thirdParty){
-        return thirdPartyRepository.save(thirdParty);
+        return thirdPartyService.newThirdParty(thirdParty);
     }
 }

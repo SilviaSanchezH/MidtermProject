@@ -18,6 +18,7 @@ public class CheckingController {
     @Autowired
     private ICheckingService checkingService;
 
+    //Create a new checking account
     @PostMapping("/account/checking")
     @ResponseStatus(HttpStatus.CREATED)
     public Account newChecking(@RequestBody @Valid CheckingDTO checkingDTO){

@@ -55,19 +55,4 @@ public class ThirdParty{
         this.hashedKey = hashedKey;
     }
 
-    public List<Transaction> getOriginThirdPartyTransactionList() {
-        return originThirdPartyTransactionList;
-    }
-
-    public void setOriginThirdPartyTransactionList(List<Transaction> originThirdPartyTransactionList) {
-        this.originThirdPartyTransactionList = originThirdPartyTransactionList;
-    }
-
-    public List<Transaction> getDestinationThirdPartyTransactionList() {
-        return destinationThirdPartyTransactionList;
-    }
-
-    public void setDestinationThirdPartyTransactionList(List<Transaction> destinationThirdPartyTransactionList) {
-        this.destinationThirdPartyTransactionList = destinationThirdPartyTransactionList;
-    }
 }

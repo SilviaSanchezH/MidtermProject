@@ -1,5 +1,6 @@
 package com.example.midtermproject.model.Users;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sun.istack.NotNull;
 
 import javax.persistence.*;
@@ -18,10 +19,17 @@ public class User {
     @NotNull
     private String name;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private Set<Role> roles;
 
     public User() {
+    }
+
+    public User(String username, String password, String name) {
+        this.username = username;
+        this.password = password;
+        this.name = name;
     }
 
     public User(String username, String password, String name, Set<Role> roles) {

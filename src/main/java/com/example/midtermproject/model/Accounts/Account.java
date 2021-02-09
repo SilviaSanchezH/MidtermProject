@@ -3,6 +3,7 @@ package com.example.midtermproject.model.Accounts;
 import com.example.midtermproject.model.Users.AccountHolder;
 import com.example.midtermproject.model.shared.Money;
 import com.sun.istack.NotNull;
+import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
 import javax.validation.constraints.DecimalMin;
@@ -35,8 +36,8 @@ public class Account {
     })
     private Money penaltyFee = new Money(new BigDecimal("40"), Currency.getInstance("USD"));
     @NotNull
-    @Column(columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
-    private LocalDate createdAt;
+    @CreationTimestamp
+    private LocalDate createdAt = LocalDate.now();
     @OneToMany(mappedBy = "originAccount")
     private List<Transaction> originTransactionList;
     @OneToMany(mappedBy = "destinationAccount")
@@ -99,22 +100,4 @@ public class Account {
         this.createdAt = createdAt;
     }
 
-    //TODO: CREO QUE NO HACE FALTA LOS SETTER Y GETTER DE LA LISTA
-
-    public List<Transaction> getOriginTransactionList() {
-        return originTransactionList;
-    }
-
-
-    public void setOriginTransactionList(List<Transaction> originTransactionList) {
-        this.originTransactionList = originTransactionList;
-    }
-
-    public List<Transaction> getDestinationTransactionList() {
-        return destinationTransactionList;
-    }
-
-    public void setDestinationTransactionList(List<Transaction> destinationTransactionList) {
-        this.destinationTransactionList = destinationTransactionList;
-    }
 }

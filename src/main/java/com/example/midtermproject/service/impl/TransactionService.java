@@ -14,6 +14,9 @@ import com.example.midtermproject.repository.UserRepository;
 import com.example.midtermproject.service.interfaces.ITransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.authentication.configurers.ldap.LdapAuthenticationProviderConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,6 +38,8 @@ public class TransactionService implements ITransactionService {
     @Autowired
     private ThirdPartyRepository thirdPartyRepository;
 
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     @Override
     public Transaction newTransaction(TransactionDTO transactionDTO, String userName) {
         User loggedUser = userRepository.findByUsername(userName).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You must be logged in"));
@@ -42,15 +47,15 @@ public class TransactionService implements ITransactionService {
         Optional<Account> destinationAccount = Optional.empty();
         Optional<ThirdParty> destinationThirdParty = Optional.empty();
 
-        if(transactionDTO.getDestinationAccount() != null && transactionDTO.getThirdPartyDestinationHashedKey() == null) {
+        if(transactionDTO.getDestinationAccount() != null && transactionDTO.getThirdPartyDestinationId() == null) {
             destinationAccount = accountRepository.findById(transactionDTO.getDestinationAccount());
-        } else if(transactionDTO.getThirdPartyDestinationHashedKey() != null && transactionDTO.getDestinationAccount() == null) {
-            destinationThirdParty = thirdPartyRepository.findByHashedKey(transactionDTO.getThirdPartyDestinationHashedKey());
+        } else if(transactionDTO.getThirdPartyDestinationId() != null && transactionDTO.getDestinationAccount() == null) {
+            destinationThirdParty = thirdPartyRepository.findById(transactionDTO.getThirdPartyDestinationId());
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction cannot have more than one destination");
         }
 
-        if(checkAccountOwner(originAccount, loggedUser) && checkSufficientFunds(originAccount, transactionDTO.getQuantity())) {
+        if(checkAccountOwner(originAccount, loggedUser) && checkSufficientFundsAndNotBlocked(originAccount, transactionDTO.getQuantity())) {
             if(destinationAccount.isPresent()) {
                 Transaction transaction = new Transaction(new Money(transactionDTO.getQuantity(), Currency.getInstance(transactionDTO.getCurrency())),
                         originAccount, destinationAccount.get());
@@ -78,8 +83,9 @@ public class TransactionService implements ITransactionService {
 
     @Override
     public Transaction newFromThirdPartyTransaction(ThirdPartyTransactionDTO thirdPartyTransactionDTO, String hashedKey) {
-        ThirdParty thirdParty = thirdPartyRepository.findByHashedKey(hashedKey).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid hashed key"));
+        ThirdParty thirdParty = thirdPartyRepository.findById(thirdPartyTransactionDTO.getThirdPartyId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid hashed key"));
         Account destinationAccount = accountRepository.findById(thirdPartyTransactionDTO.getAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid destination account"));
+        if(!passwordEncoder.matches(hashedKey, thirdParty.getHashedKey())) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Your hashed key is not valid");
         if(!(destinationAccount instanceof CreditCard)) {
             String destinationSecretKey = null;
             if(destinationAccount instanceof Checking) destinationSecretKey = ((Checking) destinationAccount).getSecretKey();
@@ -96,16 +102,23 @@ public class TransactionService implements ITransactionService {
     }
 
     private boolean checkAccountOwner(Account account, User user ) {
-        if(account.getPrimaryOwner().getUsername().equals(user.getUsername()) || account.getSecondaryOwner().getUsername().equals(user.getUsername())) {
+        if(account.getPrimaryOwner().getUsername().equals(user.getUsername()) ||
+                (account.getSecondaryOwner() != null && account.getSecondaryOwner().getUsername().equals(user.getUsername()))) {
             return true;
         }
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot operate this account");
     }
 
-    private boolean checkSufficientFunds(Account account, BigDecimal quantity) {
-        if(account.getBalance().getAmount().compareTo(quantity) > 0) {
+    private boolean checkSufficientFundsAndNotBlocked(Account account, BigDecimal quantity) {
+        boolean blocked = false;
+        if(account instanceof Checking) blocked = ((Checking) account).getStatus().equals(Status.FROZEN);
+        if(account instanceof Savings) blocked = ((Savings) account).getStatus().equals(Status.FROZEN);
+        if(account instanceof StudentChecking) blocked = ((StudentChecking) account).getStatus().equals(Status.FROZEN);
+
+        if(account.getBalance().getAmount().compareTo(quantity) >= 0 && !blocked) {
             return true;
         }
+        if(blocked) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Your account is blocked");
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You don't have sufficient funds");
     }
 
@@ -115,8 +128,8 @@ public class TransactionService implements ITransactionService {
         oneSecondBefore.add(Calendar.SECOND, -1);
 
         Calendar oneDayBefore = Calendar.getInstance();
-        oneSecondBefore.setTimeInMillis(transaction.getTransactionDate().getTime());
-        oneSecondBefore.add(Calendar.DAY_OF_MONTH, -1);
+        oneDayBefore.setTimeInMillis(transaction.getTransactionDate().getTime());
+        oneDayBefore.add(Calendar.DAY_OF_MONTH, -1);
 
         Calendar endDate = Calendar.getInstance();
         endDate.setTimeInMillis(transaction.getTransactionDate().getTime());
@@ -125,7 +138,7 @@ public class TransactionService implements ITransactionService {
         Integer maxTransactions = transactionRepository.transactionsIn24HoursForAnyAccount();
         List<Transaction> oneDayTransactions = transactionRepository.findByTransactionDateBetween(transaction.getOriginAccount().getId(), oneDayBefore.getTime(), endDate.getTime());
 
-        if(oneDayTransactions.size() > (maxTransactions * 1.5)) {
+        if(maxTransactions != null && oneDayTransactions != null && oneDayTransactions.size() > (maxTransactions * 1.5)) {
             freezeAccount(transaction.getOriginAccount());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been blocked by our fraud checking service");
         }
@@ -135,7 +148,7 @@ public class TransactionService implements ITransactionService {
 
         if(transactionList.size() > 0) {
             freezeAccount(transaction.getOriginAccount());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been blocked by our fraud checking service");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been blocked by our fraud checking service | More than one operation in one second");
         }
     }
 
@@ -147,8 +160,6 @@ public class TransactionService implements ITransactionService {
     }
 
     private boolean processLocalTransaction(Transaction transaction) {
-        // TODO: Puede que se necesite guardar el cambio de cantidad en cada cuenta por separado llamando a su repositorio
-
         BigDecimal originCurrentBalance = transaction.getOriginAccount().getBalance().getAmount();
         BigDecimal destinationCurrentBalance = transaction.getDestinationAccount().getBalance().getAmount();
 

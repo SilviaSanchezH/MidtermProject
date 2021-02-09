@@ -26,8 +26,8 @@ public class TransactionController {
     @PostMapping("/transaction/thirdparty")
     @ResponseStatus(HttpStatus.OK)
     public void newThirdPartyTransaction(@RequestBody @Valid ThirdPartyTransactionDTO thirdPartyTransactionDTO, @RequestHeader("HASHED_KEY") @NotNull String hashedKey) {
-        // TODO: Verificar que se accede de esa forma al campo del header
         transactionService.newFromThirdPartyTransaction(thirdPartyTransactionDTO, hashedKey);
     }
+
 
 }

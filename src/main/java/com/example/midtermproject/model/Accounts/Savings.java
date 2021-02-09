@@ -27,15 +27,13 @@ public class Savings extends Account{
             @AttributeOverride(name = "currency", column = @Column(name = "minimum_balance_currency")),
             @AttributeOverride(name = "amount", column = @Column(name = "minimum_balance_amount", columnDefinition = "decimal(19,2) default 1000"))
     })
-    @DecimalMax(value = "1000")
-    @DecimalMin(value = "100")
     private Money minimumBalance = new Money(new BigDecimal(1000), Currency.getInstance("USD"));
 
     @NotNull
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
 
-    @Column(columnDefinition = "decimal(19,2) default 0.0025")
+    @Column(columnDefinition = "decimal(19,5) default 0.0025")
     @DecimalMax(value = "0.5")
     private BigDecimal interestRate = new BigDecimal("0.0025");
 
@@ -47,8 +45,8 @@ public class Savings extends Account{
     public Savings(Money balance, AccountHolder primaryOwner, AccountHolder secondaryOwner, @NotNull String secretKey, @DecimalMax(value = "1000") @DecimalMin(value = "100") Money minimumBalance, @DecimalMax(value = "0.5") BigDecimal interestRate) {
         super(balance, primaryOwner, secondaryOwner);
         this.secretKey = secretKey;
-        this.minimumBalance = minimumBalance;
-        this.interestRate = interestRate;
+        if(minimumBalance != null) this.minimumBalance = minimumBalance;
+        if(interestRate != null) this.interestRate = interestRate;
     }
 
     public String getSecretKey() {

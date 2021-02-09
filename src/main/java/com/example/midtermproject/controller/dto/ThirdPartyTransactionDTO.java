@@ -11,14 +11,17 @@ public class ThirdPartyTransactionDTO {
     private Integer accountId;
     @NotNull
     private String secretKey;
+    @NotNull
+    private Integer thirdPartyId;
 
     public ThirdPartyTransactionDTO() {
     }
 
-    public ThirdPartyTransactionDTO(BigDecimal amount, Integer accountId, String secretKey) {
+    public ThirdPartyTransactionDTO(BigDecimal amount, Integer accountId, String secretKey, Integer thirdPartyId) {
         this.amount = amount;
         this.accountId = accountId;
         this.secretKey = secretKey;
+        this.thirdPartyId = thirdPartyId;
     }
 
     public BigDecimal getAmount() {
@@ -43,5 +46,13 @@ public class ThirdPartyTransactionDTO {
 
     public void setSecretKey(String secretKey) {
         this.secretKey = secretKey;
+    }
+
+    public Integer getThirdPartyId() {
+        return thirdPartyId;
+    }
+
+    public void setThirdPartyId(Integer thirdPartyId) {
+        this.thirdPartyId = thirdPartyId;
     }
 }

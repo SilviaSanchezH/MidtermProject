@@ -9,7 +9,7 @@ public class TransactionDTO {
     private Integer originAccount;
 
     private Integer destinationAccount;
-    private String thirdPartyDestinationHashedKey;
+    private Integer thirdPartyDestinationId;
 
     @NotNull
     private String destinationOwnerName;
@@ -29,9 +29,9 @@ public class TransactionDTO {
         this.currency = currency;
     }
 
-    public TransactionDTO(Integer originAccount, String thirdPartyDestinationHashedKey, String destinationOwnerName, BigDecimal quantity, String currency) {
+    public TransactionDTO(Integer originAccount, String destinationOwnerName, Integer thirdPartyDestinationId, BigDecimal quantity, String currency) {
         this.originAccount = originAccount;
-        this.thirdPartyDestinationHashedKey = thirdPartyDestinationHashedKey;
+        this.thirdPartyDestinationId = thirdPartyDestinationId;
         this.destinationOwnerName = destinationOwnerName;
         this.quantity = quantity;
         this.currency = currency;
@@ -77,11 +77,11 @@ public class TransactionDTO {
         this.currency = currency;
     }
 
-    public String getThirdPartyDestinationHashedKey() {
-        return thirdPartyDestinationHashedKey;
+    public Integer getThirdPartyDestinationId() {
+        return thirdPartyDestinationId;
     }
 
-    public void setThirdPartyDestinationHashedKey(String thirdPartyDestinationHashedKey) {
-        this.thirdPartyDestinationHashedKey = thirdPartyDestinationHashedKey;
+    public void setThirdPartyDestinationId(Integer thirdPartyDestinationHashedKey) {
+        this.thirdPartyDestinationId = thirdPartyDestinationHashedKey;
     }
 }

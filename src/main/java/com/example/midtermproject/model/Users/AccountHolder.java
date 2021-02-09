@@ -49,8 +49,8 @@ public class AccountHolder extends User{
     public AccountHolder() {
     }
 
-    public AccountHolder(String username, String password, String name, Set<Role> roles, LocalDate birth, Address primaryAddress, Address mailingAddress) {
-        super(username, password, name, roles);
+    public AccountHolder(String username, String password, String name, LocalDate birth, Address primaryAddress, Address mailingAddress) {
+        super(username, password, name);
         this.birth = birth;
         this.primaryAddress = primaryAddress;
         this.mailingAddress = mailingAddress;
@@ -79,22 +79,5 @@ public class AccountHolder extends User{
 
     public void setMailingAddress(Address mailingAddress) {
         this.mailingAddress = mailingAddress;
-    }
-
-
-    public List<Account> getAccountsPrimaryOwner() {
-        return accountsPrimaryOwner;
-    }
-
-    public void setAccountsPrimaryOwner(List<Account> accountsPrimaryOwner) {
-        this.accountsPrimaryOwner = accountsPrimaryOwner;
-    }
-
-    public List<Account> getAccountsSecondaryOwner() {
-        return accountsSecondaryOwner;
-    }
-
-    public void setAccountsSecondaryOwner(List<Account> accountsSecondaryOwner) {
-        this.accountsSecondaryOwner = accountsSecondaryOwner;
     }
 }

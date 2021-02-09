@@ -1,5 +1,7 @@
 package com.example.midtermproject.model.Users;
 
+import com.example.midtermproject.enums.RoleEnum;
+
 import javax.persistence.*;
 
 @Entity
@@ -7,15 +9,16 @@ public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String name;
+    @Enumerated(EnumType.STRING)
+    private RoleEnum name;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private User user;
 
     public Role() {
     }
 
-    public Role(String name, User user) {
+    public Role(RoleEnum name, User user) {
         this.name = name;
         this.user = user;
     }
@@ -28,11 +31,11 @@ public class Role {
         this.id = id;
     }
 
-    public String getName() {
+    public RoleEnum getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(RoleEnum name) {
         this.name = name;
     }
 

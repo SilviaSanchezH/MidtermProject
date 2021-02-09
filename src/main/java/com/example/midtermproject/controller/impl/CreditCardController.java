@@ -1,5 +1,6 @@
 package com.example.midtermproject.controller.impl;
 
+import com.example.midtermproject.controller.dto.CreditCardDTO;
 import com.example.midtermproject.model.Accounts.CreditCard;
 import com.example.midtermproject.service.impl.CreditCardService;
 import com.example.midtermproject.service.interfaces.ICreditCardService;
@@ -19,7 +20,7 @@ public class CreditCardController {
 
     @PostMapping("/account/creditcard")
     @ResponseStatus(HttpStatus.CREATED)
-    public CreditCard newCreditCard(@RequestBody @Valid CreditCard creditCard) {
-        return creditCardService.newCreditCard(creditCard);
+    public CreditCard newCreditCard(@RequestBody @Valid CreditCardDTO creditCardDTO) {
+        return creditCardService.newCreditCard(creditCardDTO);
     }
 }

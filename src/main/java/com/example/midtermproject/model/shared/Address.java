@@ -14,6 +14,9 @@ public class Address {
         this.postalCode = postalCode;
     }
 
+    public Address() {
+    }
+
     public String getStreet() {
         return street;
     }

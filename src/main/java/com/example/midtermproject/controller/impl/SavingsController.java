@@ -1,5 +1,7 @@
 package com.example.midtermproject.controller.impl;
 
+import com.example.midtermproject.controller.dto.SavingsDTO;
+import com.example.midtermproject.model.Accounts.Account;
 import com.example.midtermproject.model.Accounts.Savings;
 import com.example.midtermproject.service.interfaces.ISavingsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,7 @@ public class SavingsController {
 
     @PostMapping("/account/savings")
     @ResponseStatus(HttpStatus.CREATED)
-    public Savings newSaving(@RequestBody @Valid Savings savings) {
-        return savingsService.newSaving(savings);
+    public Savings newSaving(@RequestBody @Valid SavingsDTO savingsDTO) {
+        return savingsService.newSaving(savingsDTO);
     }
 }

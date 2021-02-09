@@ -1,11 +1,15 @@
 package com.example.midtermproject.service.impl;
 
 import com.example.midtermproject.controller.dto.BalanceDTO;
+import com.example.midtermproject.enums.RoleEnum;
 import com.example.midtermproject.model.Accounts.Account;
 import com.example.midtermproject.model.Accounts.CreditCard;
 import com.example.midtermproject.model.Accounts.Savings;
+import com.example.midtermproject.model.Users.Role;
+import com.example.midtermproject.model.Users.User;
 import com.example.midtermproject.model.shared.Money;
 import com.example.midtermproject.repository.AccountRepository;
+import com.example.midtermproject.repository.UserRepository;
 import com.example.midtermproject.service.interfaces.IAccountService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,6 +30,9 @@ public class AccountService implements IAccountService {
     @Autowired
     private AccountRepository accountRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public void updateBalance(Integer id, BigDecimal amount, String currency) {
         Optional<Account> account = accountRepository.findById(id);
         if(account.isPresent()){
@@ -39,7 +46,9 @@ public class AccountService implements IAccountService {
     @Override
     public Account getAccount(Integer id, String userName) {
         Account account = accountRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account for that id doesn't exists"));
-        if(account.getPrimaryOwner().getUsername().equals(userName) || account.getSecondaryOwner().getUsername().equals(userName)) {
+        User user = userRepository.findByUsername(userName).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not valid userName"));
+        boolean isAdmin = user.getRoles().stream().anyMatch(role -> role.getName().equals(RoleEnum.ADMIN));
+        if(isAdmin || account.getPrimaryOwner().getUsername().equals(userName) || (account.getSecondaryOwner() != null && account.getSecondaryOwner().getUsername().equals(userName))) {
             if(account instanceof Savings) account = addSavingsAccountInterest((Savings) account);
             if(account instanceof CreditCard) account = addCreditCardInterest((CreditCard) account);
             return account;
@@ -50,7 +59,9 @@ public class AccountService implements IAccountService {
     @Override
     public BalanceDTO getAccountBalance(Integer id, String userName) {
         Account account = accountRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account for that id doesn't exists"));
-        if(account.getPrimaryOwner().getUsername().equals(userName) || account.getSecondaryOwner().getUsername().equals(userName)) {
+        User user = userRepository.findByUsername(userName).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not valid userName"));
+        boolean isAdmin = user.getRoles().stream().anyMatch(role -> role.getName().equals(RoleEnum.ADMIN));
+        if(isAdmin || account.getPrimaryOwner().getUsername().equals(userName) || (account.getSecondaryOwner() != null && account.getSecondaryOwner().getUsername().equals(userName))) {
             if(account instanceof Savings) account = addSavingsAccountInterest((Savings) account);
             if(account instanceof CreditCard) account = addCreditCardInterest((CreditCard) account);
             return new BalanceDTO(account.getBalance().getAmount(), account.getBalance().getCurrency().getCurrencyCode());
