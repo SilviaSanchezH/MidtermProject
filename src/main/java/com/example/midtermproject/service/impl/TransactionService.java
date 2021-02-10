@@ -142,9 +142,6 @@ public class TransactionService implements ITransactionService {
         Integer maxTransactions = transactionRepository.transactionsIn24HoursForAnyAccount(transaction.getOriginAccount().getId());
         List<Transaction> oneDayTransactions = transactionRepository.findByTransactionDateBetween(transaction.getOriginAccount().getId(), oneDayBefore.getTime(), endDate.getTime());
 
-        System.out.println("oneDayTransaction size: " + (oneDayTransactions != null ? oneDayTransactions.size() : "null"));
-        System.out.println("maxTransactions: " + (maxTransactions!= null ? maxTransactions : "null" ));
-        System.out.println("maxTransactions*1.5: " +(maxTransactions != null ?  (maxTransactions * 1.5): "null"));
         if(maxTransactions != null && oneDayTransactions != null && oneDayTransactions.size() > (maxTransactions * 1.5)) {
             freezeAccount(transaction.getOriginAccount());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been blocked by our fraud checking service");

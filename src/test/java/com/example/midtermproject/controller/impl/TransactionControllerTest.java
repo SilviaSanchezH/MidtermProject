@@ -311,7 +311,7 @@ class TransactionControllerTest {
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
         Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByHashedKey("123").get().getId();
+        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
 
         //Integer originAccount, String destinationOwnerName, Integer thirdPartyDestinationId, BigDecimal quantity, String currency
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("1000"), "USD");
@@ -333,7 +333,7 @@ class TransactionControllerTest {
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
         Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByHashedKey("123").get().getId();
+        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
 
         //Integer originAccount, String destinationOwnerName, Integer thirdPartyDestinationId, BigDecimal quantity, String currency
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("100000"), "USD");
@@ -353,7 +353,7 @@ class TransactionControllerTest {
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
         Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByHashedKey("123").get().getId();
+        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("9900"), "USD");
 
@@ -374,7 +374,7 @@ class TransactionControllerTest {
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
         Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByHashedKey("123").get().getId();
+        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", 654, new BigDecimal("9900"), "USD");
 
@@ -393,7 +393,7 @@ class TransactionControllerTest {
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
         Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByHashedKey("123").get().getId();
+        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(978, "Pacathird", 654, new BigDecimal("9900"), "USD");
 

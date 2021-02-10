@@ -36,7 +36,7 @@ public class Account {
     })
     private Money penaltyFee = new Money(new BigDecimal("40"), Currency.getInstance("USD"));
     @NotNull
-    //@CreationTimestamp
+    @CreationTimestamp
     private LocalDate createdAt = LocalDate.now();
     @OneToMany(mappedBy = "originAccount")
     private List<Transaction> originTransactionList;

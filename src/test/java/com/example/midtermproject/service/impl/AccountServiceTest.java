@@ -1,5 +1,6 @@
 package com.example.midtermproject.service.impl;
 
+import com.example.midtermproject.controller.dto.BalanceDTO;
 import com.example.midtermproject.model.Accounts.Account;
 import com.example.midtermproject.model.Accounts.Savings;
 import com.example.midtermproject.model.Users.AccountHolder;
@@ -55,7 +56,6 @@ class AccountServiceTest {
         AccountHolder accountHolder = accountHolderRepository.findByName("Paco").get(0);
         Integer accountId = accountRepository.findByPrimaryOwner(accountHolder).get(0).getId();
         accountService.updateBalance(accountId, newBalance, "USD");
-
         assertEquals(newBalance.compareTo(accountRepository.findById(accountId).get().getBalance().getAmount()), 0);
     }
 
@@ -72,7 +72,6 @@ class AccountServiceTest {
         AccountHolder accountHolder = accountHolderRepository.findByName("Paco").get(0);
         Integer accountId = accountRepository.findByPrimaryOwner(accountHolder).get(0).getId();
         String usernarme = accountHolder.getUsername();
-
         assertEquals("Paco", accountService.getAccount(accountId, usernarme).getPrimaryOwner().getName());
     }
 
@@ -81,24 +80,42 @@ class AccountServiceTest {
         AccountHolder accountHolder = accountHolderRepository.findByName("Paco").get(0);
         Integer accountId = accountRepository.findByPrimaryOwner(accountHolder).get(0).getId();
         String usernarme = accountHolder.getUsername();
-
         assertThrows(ResponseStatusException.class, ()-> accountService.getAccount(accountId+56, usernarme));
     }
 
     @Test
-    void getAccount_notvalidUsername() {
+    void getAccount_notValidUsername() {
         AccountHolder accountHolder = accountHolderRepository.findByName("Paco").get(0);
         Integer accountId = accountRepository.findByPrimaryOwner(accountHolder).get(0).getId();
         String usernarme = accountHolder.getUsername();
-
         assertThrows(ResponseStatusException.class, ()-> accountService.getAccount(accountId+56, "manolo"));
     }
 
-
     @Test
     void getAccountBalance() {
+        AccountHolder accountHolder = accountHolderRepository.findByName("Paco").get(0);
+        Integer accountId = accountRepository.findByPrimaryOwner(accountHolder).get(0).getId();
+        BalanceDTO result = accountService.getAccountBalance(accountId, accountHolder.getUsername());
 
+        Account account = accountRepository.findByPrimaryOwner(accountHolder).get(0);
+        BigDecimal balance = account.getBalance().getAmount();
+
+        assertEquals(balance.compareTo(result.getAmount()), 0);
     }
 
+    @Test
+    void getAccountBalance_notValidId() {
+        AccountHolder accountHolder = accountHolderRepository.findByName("Paco").get(0);
+        Integer accountId = accountRepository.findByPrimaryOwner(accountHolder).get(0).getId();
+
+       assertThrows(ResponseStatusException.class, ()-> accountService.getAccountBalance(accountId+56, accountHolder.getUsername()));
+    }
+
+    @Test
+    void getAccountBalance_notValidUserName() {
+        AccountHolder accountHolder = accountHolderRepository.findByName("Paco").get(0);
+        Integer accountId = accountRepository.findByPrimaryOwner(accountHolder).get(0).getId();
+        assertThrows(ResponseStatusException.class, ()-> accountService.getAccountBalance(accountId, "Manolo"));
+    }
 
 }
