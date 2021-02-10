@@ -83,6 +83,7 @@ class AccountControllerTest {
         accountHolderRepository.saveAll(List.of(accountHolder, accountHolder2));
         Savings savings = new Savings (new Money(new BigDecimal("78000")) , accountHolder, accountHolder2, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
 
+
         accountRepository.save(savings);
 
         Admin admin = new Admin("admin", "123", "elAdministrador");
@@ -101,7 +102,7 @@ class AccountControllerTest {
     }
 
     @Test
-    void getAccount_ValidAccountHolder_account() throws Exception{
+    void getAccount_validAccountHolder_account() throws Exception{
 
         User user = new User("Paco", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
@@ -110,12 +111,37 @@ class AccountControllerTest {
 
                 MvcResult result = this.mockMvc.perform(
                         get("/account/" + account.getId()).principal(testingAuthenticationToken)
-                    //    .header("HASHED_KEY", "contraseñadelthirdparty")
                 ).andExpect(status().isOk()).andReturn();
 
                 assertTrue(result.getResponse().getContentAsString().contains("Paco"));
-
     }
+
+    @Test
+    void getAccount_notValidAccountHolder_notAccount() throws Exception{
+
+        User user = new User("Manola", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isNotFound()).andReturn();
+    }
+
+    @Test
+    void getAccount_notValidAccountId_notAccount() throws Exception{
+
+        User user = new User("Paco", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/" + 520).principal(testingAuthenticationToken)
+        ).andExpect(status().isNotFound()).andReturn();
+    }
+
 
     @Test
     void getAccount_ValidAdmin_account() throws Exception{
@@ -130,6 +156,20 @@ class AccountControllerTest {
         ).andExpect(status().isOk()).andReturn();
 
         assertTrue(result.getResponse().getContentAsString().contains("Paco"));
+    }
+
+    @Test
+    void getAccount_notvalidAdmin_notAccount() throws Exception{
+
+        User user = new User("administrador", "123", AuthorityUtils.createAuthorityList("ADMIN"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isNotFound()).andReturn();
+
     }
 
 
@@ -149,6 +189,19 @@ class AccountControllerTest {
     }
 
     @Test
+    void getAccountBalance_notValidAccountHolder_notGetAccount() throws Exception{
+        User user = new User("Manola", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/balance/" + account.getId()).principal(testingAuthenticationToken)
+                //    .header("HASHED_KEY", "contraseñadelthirdparty")
+        ).andExpect(status().isNotFound()).andReturn();
+    }
+
+    @Test
     void getAccountBalance_ValidAdmin_account() throws Exception{
         User user = new User("admin", "123", AuthorityUtils.createAuthorityList("ADMIN"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
@@ -157,14 +210,39 @@ class AccountControllerTest {
 
         MvcResult result = this.mockMvc.perform(
                 get("/account/balance/" + account.getId()).principal(testingAuthenticationToken)
-                //    .header("HASHED_KEY", "contraseñadelthirdparty")
         ).andExpect(status().isOk()).andReturn();
 
         assertTrue(result.getResponse().getContentAsString().contains("78000"));
     }
 
     @Test
-    void updateBalance_validAdmin_update() throws Exception{
+    void getAccountBalance_notValidAdmin_account() throws Exception{
+        User user = new User("administrador", "123", AuthorityUtils.createAuthorityList("ADMIN"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/balance/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isNotFound()).andReturn();
+    }
+
+    @Test
+    void getAccountBalance_notValidAccountId_notGetAccount() throws Exception{
+        User user = new User("administrador", "123", AuthorityUtils.createAuthorityList("ADMIN"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/balance/" + 698).principal(testingAuthenticationToken)
+        ).andExpect(status().isNotFound()).andReturn();
+    }
+
+
+
+    @Test
+    void updateBalance_validAccountId_update() throws Exception{
         Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
 
         String body = "{\"amount\": 6000, \"currency\": \"USD\"}";
@@ -175,8 +253,40 @@ class AccountControllerTest {
         ).andExpect(status().isNoContent()).andReturn();
 
         assertTrue((new BigDecimal("6000")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0).getBalance().getAmount())==0);
-}
-
-
 
     }
+
+    @Test
+    void updateBalance_notValidAccountId_notUpdate() throws Exception{
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+
+        String body = "{\"amount\": 6000, \"currency\": \"USD\"}";
+        MvcResult result = mockMvc.perform(
+                patch("/account/balance/600")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isNotFound()).andReturn();
+
+    }
+
+    @Test
+    void getAccount_addInterestSavings_account() throws Exception{
+        User user = new User("Paco", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+        account.setCreatedAt(LocalDate.of(2020, 2, 8));
+
+        accountRepository.save(account);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertTrue(result.getResponse().getContentAsString().contains("93600"));
+        assertEquals((new BigDecimal("93600")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0).getBalance().getAmount()), 0);
+    }
+
+    //TODO: HACER ADDINTEREST EN CREDITCARD.ES
+
+}

@@ -47,6 +47,7 @@ public class TransactionService implements ITransactionService {
         Optional<Account> destinationAccount = Optional.empty();
         Optional<ThirdParty> destinationThirdParty = Optional.empty();
 
+        //Comprobamos si la cuenta de destino es una cuenta del banco o un thirdparty
         if(transactionDTO.getDestinationAccount() != null && transactionDTO.getThirdPartyDestinationId() == null) {
             destinationAccount = accountRepository.findById(transactionDTO.getDestinationAccount());
         } else if(transactionDTO.getThirdPartyDestinationId() != null && transactionDTO.getDestinationAccount() == null) {
@@ -85,6 +86,7 @@ public class TransactionService implements ITransactionService {
     public Transaction newFromThirdPartyTransaction(ThirdPartyTransactionDTO thirdPartyTransactionDTO, String hashedKey) {
         ThirdParty thirdParty = thirdPartyRepository.findById(thirdPartyTransactionDTO.getThirdPartyId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid hashed key"));
         Account destinationAccount = accountRepository.findById(thirdPartyTransactionDTO.getAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid destination account"));
+        //matches compara el hashedkey que introduce el usuario con el que ya existe en la base de datos
         if(!passwordEncoder.matches(hashedKey, thirdParty.getHashedKey())) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Your hashed key is not valid");
         if(!(destinationAccount instanceof CreditCard)) {
             String destinationSecretKey = null;
@@ -101,6 +103,7 @@ public class TransactionService implements ITransactionService {
         return null;
     }
 
+    //comprobamos que el usuario sea el dueño de la cuenta
     private boolean checkAccountOwner(Account account, User user ) {
         if(account.getPrimaryOwner().getUsername().equals(user.getUsername()) ||
                 (account.getSecondaryOwner() != null && account.getSecondaryOwner().getUsername().equals(user.getUsername()))) {
@@ -109,6 +112,7 @@ public class TransactionService implements ITransactionService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot operate this account");
     }
 
+    //comprobamos que la cuenta no esté bloqueada y tenga suficientes fondos
     private boolean checkSufficientFundsAndNotBlocked(Account account, BigDecimal quantity) {
         boolean blocked = false;
         if(account instanceof Checking) blocked = ((Checking) account).getStatus().equals(Status.FROZEN);
@@ -135,9 +139,12 @@ public class TransactionService implements ITransactionService {
         endDate.setTimeInMillis(transaction.getTransactionDate().getTime());
 
         // Transactions made in 24 hours that total to more than 150% of the customers highest daily total transactions in any other 24 hour period.
-        Integer maxTransactions = transactionRepository.transactionsIn24HoursForAnyAccount();
+        Integer maxTransactions = transactionRepository.transactionsIn24HoursForAnyAccount(transaction.getOriginAccount().getId());
         List<Transaction> oneDayTransactions = transactionRepository.findByTransactionDateBetween(transaction.getOriginAccount().getId(), oneDayBefore.getTime(), endDate.getTime());
 
+        System.out.println("oneDayTransaction size: " + (oneDayTransactions != null ? oneDayTransactions.size() : "null"));
+        System.out.println("maxTransactions: " + (maxTransactions!= null ? maxTransactions : "null" ));
+        System.out.println("maxTransactions*1.5: " +(maxTransactions != null ?  (maxTransactions * 1.5): "null"));
         if(maxTransactions != null && oneDayTransactions != null && oneDayTransactions.size() > (maxTransactions * 1.5)) {
             freezeAccount(transaction.getOriginAccount());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been blocked by our fraud checking service");

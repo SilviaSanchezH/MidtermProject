@@ -14,6 +14,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     @Query(value = "SELECT * FROM transaction WHERE origin_account = :originAccount AND transaction_date BETWEEN :startDate AND :endDate", nativeQuery = true)
     public List<Transaction> findByTransactionDateBetween(@Param("originAccount") Integer originAccount, @Param("startDate") Date startDate, @Param("endDate")Date endDate);
 
-    @Query(value = "SELECT MAX(t.transactions) FROM (SELECT COUNT(*) AS transactions, DAY(transaction_date), origin_account FROM transaction GROUP BY origin_account, DAY(transaction_date)) t", nativeQuery = true)
-    public Integer transactionsIn24HoursForAnyAccount();
+    @Query(value = "SELECT MAX(t.transactions) FROM (SELECT COUNT(*) AS transactions, DAY(transaction_date), origin_account FROM transaction " +
+            "WHERE origin_account != :originAccount GROUP BY origin_account, DAY(transaction_date)) t", nativeQuery = true)
+    public Integer transactionsIn24HoursForAnyAccount(@Param("originAccount") Integer originAccount);
 }

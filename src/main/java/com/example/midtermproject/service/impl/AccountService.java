@@ -70,9 +70,11 @@ public class AccountService implements IAccountService {
     }
 
     private Account addSavingsAccountInterest(Savings account) {
+        //Aquí calculas el tiempo que ha pasado desde que se creó la cuenta hasta ahora
         int yearsSinceCreation = Period.between(account.getCreatedAt(), LocalDate.now()).getYears();
         int yearsToAdd = yearsSinceCreation;
 
+        //Aquí compruebas si alguna vez se han añadido intereses y calculas el tiempo que ha pasado hasta ahora.
         if(account.getInterestAdditionDate() != null) {
             int yearsSinceLastAddition = Period.between(account.getInterestAdditionDate(), LocalDate.now()).getYears();
             yearsToAdd = Math.min(yearsSinceLastAddition, yearsSinceCreation);
