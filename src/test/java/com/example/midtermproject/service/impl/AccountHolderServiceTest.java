@@ -31,12 +31,11 @@ class AccountHolderServiceTest {
         accountHolderRepository.deleteAll();
     }
 
-    //TODO NO FUNSIONA
     @Test
     void newAccountHolder() {
         //    public AccountHolderDTO(String username, String password, String name, LocalDate birth, String primaryStreet, String primaryCity, String primaryPostalCode, String mailingStreet, String mailingCity, String mailingPostalCode) {
         AccountHolderDTO accountHolderDTO = new AccountHolderDTO("Willirex", "123", "Willi", LocalDate.of(1992,5,5), "Soledad", "Madrid", "9874", "cuaderno", "cuenca", "9872");
-        AccountHolder accountHolder = accountHolderService.newAccountHolder(accountHolderDTO);
+        accountHolderService.newAccountHolder(accountHolderDTO);
 
         assertEquals("Willi", accountHolderRepository.findByName("Willi").get(0).getName());
     }

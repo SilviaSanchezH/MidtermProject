@@ -36,10 +36,11 @@ class AdminControllerTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
     }
 
-/*    @AfterEach
+    @AfterEach
     void tearDown() {
 
-    }*/
+
+    }
 
     @Test
     void newAdmin() throws Exception {

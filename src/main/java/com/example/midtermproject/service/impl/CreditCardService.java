@@ -28,7 +28,6 @@ public class CreditCardService implements ICreditCardService {
 
 
         if(creditCardDTO.getCreditLimit() == null) creditCardDTO.setCreditLimit(new BigDecimal("100"));
-        //TODO: CREO QUE NO HACE FALTA PERO NO ME FIO
         else if(creditCardDTO.getCreditLimit().compareTo(new BigDecimal(100)) < 0 ||
                 creditCardDTO.getCreditLimit().compareTo(new BigDecimal(100000)) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Credit limit must be between 100 and 100000");
