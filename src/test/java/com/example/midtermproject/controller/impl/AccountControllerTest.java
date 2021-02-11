@@ -3,6 +3,7 @@ package com.example.midtermproject.controller.impl;
 import com.example.midtermproject.controller.dto.SavingsDTO;
 import com.example.midtermproject.enums.RoleEnum;
 import com.example.midtermproject.model.Accounts.Account;
+import com.example.midtermproject.model.Accounts.CreditCard;
 import com.example.midtermproject.model.Accounts.Savings;
 import com.example.midtermproject.model.Users.AccountHolder;
 
@@ -10,10 +11,7 @@ import com.example.midtermproject.model.Users.Admin;
 import com.example.midtermproject.model.Users.Role;
 import com.example.midtermproject.model.shared.Address;
 import com.example.midtermproject.model.shared.Money;
-import com.example.midtermproject.repository.AccountHolderRepository;
-import com.example.midtermproject.repository.AccountRepository;
-import com.example.midtermproject.repository.AdminRepository;
-import com.example.midtermproject.repository.SavingsRepository;
+import com.example.midtermproject.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mysql.cj.protocol.x.XAuthenticationProvider;
 import org.apache.logging.log4j.util.Base64Util;
@@ -62,6 +60,9 @@ class AccountControllerTest {
     private SavingsRepository savingsRepository;
 
     @Autowired
+    CreditCardRepository creditCardRepository;
+
+    @Autowired
     private AccountRepository accountRepository;
 
     @Autowired
@@ -82,9 +83,10 @@ class AccountControllerTest {
         AccountHolder accountHolder2 = new AccountHolder("Paca", "123", "Paca", LocalDate.of(1955, 6,8), primaryAddress, secondaryAddress);
         accountHolderRepository.saveAll(List.of(accountHolder, accountHolder2));
         Savings savings = new Savings (new Money(new BigDecimal("78000")) , accountHolder, accountHolder2, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
+        //    public CreditCard(Money balance, AccountHolder primaryOwner, AccountHolder secondaryOwner, Money creditLimit, @DecimalMin(value = "0.1") @DecimalMax(value = "0.2") BigDecimal interestRate) {
+        CreditCard creditCard = new CreditCard(new Money(new BigDecimal("30000")), accountHolder2, accountHolder, new Money(new BigDecimal("60000")), new BigDecimal("0.1"));
 
-
-        accountRepository.save(savings);
+        accountRepository.saveAll(List.of(savings, creditCard));
 
         Admin admin = new Admin("admin", "123", "elAdministrador");
         Set<Role> roles = new HashSet<>();
@@ -287,6 +289,93 @@ class AccountControllerTest {
         assertEquals((new BigDecimal("93600")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0).getBalance().getAmount()), 0);
     }
 
-    //TODO: HACER ADDINTEREST EN CREDITCARD.ES
+    @Test
+    void getAccount_addInterestCreditCard_account() throws Exception{
+        User user = new User("Paca", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paca").get(0)).get(0);
+        account.setCreatedAt(LocalDate.of(2020, 1, 8));
+
+        accountRepository.save(account);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("30249.90")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paca").get(0)).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void getAccountBalance_addInterestSavingsValidAdmin_account() throws Exception{
+        User user = new User("admin", "123", AuthorityUtils.createAuthorityList("ADMIN"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+        account.setCreatedAt(LocalDate.of(2020, 1, 8));
+
+        accountRepository.save(account);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/balance/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertTrue(result.getResponse().getContentAsString().contains("93600"));
+    }
+
+    @Test
+    void getAccountBalance_addInterestSavingsValidUser_account() throws Exception{
+        User user = new User("Paco", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paco").get(0)).get(0);
+        account.setCreatedAt(LocalDate.of(2020, 1, 8));
+
+        accountRepository.save(account);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/balance/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertTrue(result.getResponse().getContentAsString().contains("93600"));
+    }
+
+    @Test
+    void getAccountBalance_addInterestCreditCardValidUser_account() throws Exception{
+        User user = new User("Paca", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paca").get(0)).get(0);
+        account.setCreatedAt(LocalDate.of(2020, 1, 8));
+
+        accountRepository.save(account);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/balance/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("30249.90")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paca").get(0)).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void getAccountBalance_addInterestCreditCardValidAdmin_account() throws Exception{
+        User user = new User("admin", "123", AuthorityUtils.createAuthorityList("ADMIN"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Account account = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paca").get(0)).get(0);
+        account.setCreatedAt(LocalDate.of(2020, 1, 8));
+
+        accountRepository.save(account);
+
+        MvcResult result = this.mockMvc.perform(
+                get("/account/balance/" + account.getId()).principal(testingAuthenticationToken)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("30249.90")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Paca").get(0)).get(0).getBalance().getAmount()), 0);
+    }
+
+
+
+
 
 }

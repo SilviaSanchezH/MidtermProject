@@ -139,7 +139,9 @@ public class TransactionService implements ITransactionService {
         endDate.setTimeInMillis(transaction.getTransactionDate().getTime());
 
         // Transactions made in 24 hours that total to more than 150% of the customers highest daily total transactions in any other 24 hour period.
+        //cogemos el maximo de transacciones que ha hecho una cuenta en 24 horas
         Integer maxTransactions = transactionRepository.transactionsIn24HoursForAnyAccount(transaction.getOriginAccount().getId());
+        //ccogemos una lista con las transacciones que ha hecho la cuenta en 24 horas
         List<Transaction> oneDayTransactions = transactionRepository.findByTransactionDateBetween(transaction.getOriginAccount().getId(), oneDayBefore.getTime(), endDate.getTime());
 
         if(maxTransactions != null && oneDayTransactions != null && oneDayTransactions.size() > (maxTransactions * 1.5)) {
@@ -164,6 +166,7 @@ public class TransactionService implements ITransactionService {
     }
 
     private boolean processLocalTransaction(Transaction transaction) {
+        System.out.println("------------se llama al porcess local");
         BigDecimal originCurrentBalance = transaction.getOriginAccount().getBalance().getAmount();
         BigDecimal destinationCurrentBalance = transaction.getDestinationAccount().getBalance().getAmount();
 
@@ -173,6 +176,9 @@ public class TransactionService implements ITransactionService {
         transaction.getOriginAccount().setBalance(new Money(originNewBalance, Currency.getInstance(transaction.getOriginAccount().getBalance().getCurrency().getCurrencyCode())));
         transaction.getDestinationAccount().setBalance(new Money(destinationNewBalance, Currency.getInstance(transaction.getDestinationAccount().getBalance().getCurrency().getCurrencyCode())));
 
+        accountRepository.saveAll(List.of(transaction.getOriginAccount(), transaction.getDestinationAccount()));
+
+        System.out.println("----------------acaba process");
         return true;
     }
 
@@ -181,6 +187,7 @@ public class TransactionService implements ITransactionService {
         BigDecimal destinationNewBalance = destinationCurrentBalance.add(transaction.getValue().getAmount());
         transaction.getDestinationAccount().setBalance(new Money(destinationNewBalance, Currency.getInstance(transaction.getDestinationAccount().getBalance().getCurrency().getCurrencyCode())));
 
+        accountRepository.save(transaction.getDestinationAccount());
         return true;
     }
 
@@ -189,6 +196,7 @@ public class TransactionService implements ITransactionService {
         BigDecimal originNewBalance = originCurrentBalance.subtract(transaction.getValue().getAmount());
         transaction.getOriginAccount().setBalance(new Money(originNewBalance, Currency.getInstance(transaction.getOriginAccount().getBalance().getCurrency().getCurrencyCode())));
 
+        accountRepository.save(transaction.getOriginAccount());
         return true;
     }
 
@@ -197,6 +205,7 @@ public class TransactionService implements ITransactionService {
             BigDecimal amount = account.getBalance().getAmount().subtract(account.getPenaltyFee().getAmount());
             account.setBalance(new Money(amount));
         }
+        accountRepository.save(account);
         return account;
     }
 
@@ -206,6 +215,7 @@ public class TransactionService implements ITransactionService {
             BigDecimal amount = account.getBalance().getAmount().subtract(account.getPenaltyFee().getAmount());
             account.setBalance(new Money(amount));
         }
+        accountRepository.save(account);
         return account;
     }
 

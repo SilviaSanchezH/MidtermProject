@@ -113,11 +113,11 @@ class TransactionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isOk()).andReturn();
 
-        assertTrue((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount())==0);
+       assertTrue((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount())==0);
     }
 
     @Test
-    void newTransaction_checkStatusLocalTransaction_Transaction() throws Exception{
+    void newTransaction_checkStatusLocalTransaction_notTransaction() throws Exception{
 
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
