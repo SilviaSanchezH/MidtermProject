@@ -67,12 +67,11 @@ class CreditCardServiceTest {
     @Test
     void newCreditCard_invalidCreditLimitCreditCardAccount_notCreate() {
         CreditCardDTO creditCardDTO = new CreditCardDTO(new BigDecimal("9888"), nino.getId(), nina.getId(), new BigDecimal("20"), new BigDecimal(0.1));
-
         assertThrows(ResponseStatusException.class, ()-> creditCardService.newCreditCard(creditCardDTO));
     }
 
     @Test
-    void newCreditCard_errorInterestRateCreditCardAccount_notCreate() {
+    void newCreditCard_invalidInterestRateCreditCardAccount_notCreate() {
         CreditCardDTO creditCardDTO = new CreditCardDTO(new BigDecimal("9888"), nino.getId(), nina.getId(), new BigDecimal("2000"), new BigDecimal(0.01));
         assertThrows(ResponseStatusException.class, ()-> creditCardService.newCreditCard(creditCardDTO));
     }

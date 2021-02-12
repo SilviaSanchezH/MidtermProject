@@ -282,6 +282,7 @@ class AccountControllerTest {
         assertTrue((new BigDecimal("6000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder).get(0).getBalance().getAmount())==0);
     }
 
+
     @Test
     void updateBalance_notValidAccountId_notUpdate() throws Exception{
 

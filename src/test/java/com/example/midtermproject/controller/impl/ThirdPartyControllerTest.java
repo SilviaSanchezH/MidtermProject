@@ -52,4 +52,4 @@ class ThirdPartyControllerTest {
 
         assertTrue(result.getResponse().getContentAsString().contains("JuanParty"));
     }
-    }
+}

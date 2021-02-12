@@ -22,6 +22,7 @@ public class ThirdPartyService implements IThirdPartyService {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
+    //create a new third party
     public ThirdParty newThirdParty(ThirdParty thirdParty) {
         String password = passwordEncoder.encode(thirdParty.getHashedKey());
         thirdParty.setHashedKey(password);

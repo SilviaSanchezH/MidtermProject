@@ -41,13 +41,14 @@ public class TransactionService implements ITransactionService {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
+    //This method allows to do a new transaction to other account or third party
     public Transaction newTransaction(TransactionDTO transactionDTO, String userName) {
         User loggedUser = userRepository.findByUsername(userName).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You must be logged in"));
         Account originAccount = accountRepository.findById(transactionDTO.getOriginAccount()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid origin account"));
         Optional<Account> destinationAccount = Optional.empty();
         Optional<ThirdParty> destinationThirdParty = Optional.empty();
 
-        //Comprobamos si la cuenta de destino es una cuenta del banco o un thirdparty
+        //Check if the destination account is a third party or an account.
         if(transactionDTO.getDestinationAccount() != null && transactionDTO.getThirdPartyDestinationId() == null) {
             destinationAccount = accountRepository.findById(transactionDTO.getDestinationAccount());
         } else if(transactionDTO.getThirdPartyDestinationId() != null && transactionDTO.getDestinationAccount() == null) {
@@ -56,54 +57,48 @@ public class TransactionService implements ITransactionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction cannot have more than one destination");
         }
 
+        //Check if the user is the owner of the origin account and if he has sufficients funds and not is blocked and finally do the transaction.
         if(checkAccountOwner(originAccount, loggedUser) && checkSufficientFundsAndNotBlocked(originAccount, transactionDTO.getQuantity())) {
             if(destinationAccount.isPresent()) {
                 Transaction transaction = new Transaction(new Money(transactionDTO.getQuantity(), Currency.getInstance(transactionDTO.getCurrency())),
                         originAccount, destinationAccount.get());
 
                 checkFraud(transaction);
-                boolean processedTransaction = processLocalTransaction(transaction);
-                if(transaction.getOriginAccount() instanceof Savings) transaction.setOriginAccount(applyPenaltyFee((Savings) transaction.getOriginAccount()));
-                if(transaction.getOriginAccount() instanceof Checking) transaction.setOriginAccount(applyPenaltyFee((Checking) transaction.getOriginAccount()));
-                if(processedTransaction) return transactionRepository.save(transaction);
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "The transaction cannot be processed");
+                return processLocalTransaction(transaction);
             } else if(destinationThirdParty.isPresent()) {
                 Transaction transaction = new Transaction(new Money(transactionDTO.getQuantity(), Currency.getInstance(transactionDTO.getCurrency())),
                         originAccount, destinationThirdParty.get());
 
                 checkFraud(transaction);
-                boolean processedTransaction = processToThirdPartyTransaction(transaction);
-                if(transaction.getOriginAccount() instanceof Savings) transaction.setOriginAccount(applyPenaltyFee((Savings) transaction.getOriginAccount()));
-                if(transaction.getOriginAccount() instanceof Checking) transaction.setOriginAccount(applyPenaltyFee((Checking) transaction.getOriginAccount()));
-                if(processedTransaction) return transactionRepository.save(transaction);
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "The transaction cannot be processed");
+                return processToThirdPartyTransaction(transaction);
             }
         }
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid destination account");
     }
 
     @Override
+    //This method allows thirdparty do transactions to other account.
     public Transaction newFromThirdPartyTransaction(ThirdPartyTransactionDTO thirdPartyTransactionDTO, String hashedKey) {
         ThirdParty thirdParty = thirdPartyRepository.findById(thirdPartyTransactionDTO.getThirdPartyId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid hashed key"));
         Account destinationAccount = accountRepository.findById(thirdPartyTransactionDTO.getAccountId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid destination account"));
-        //matches compara el hashedkey que introduce el usuario con el que ya existe en la base de datos
+        //Compare if the hashed key that introduce the thirdparty exits in the database.
         if(!passwordEncoder.matches(hashedKey, thirdParty.getHashedKey())) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Your hashed key is not valid");
         if(!(destinationAccount instanceof CreditCard)) {
             String destinationSecretKey = null;
-            if(destinationAccount instanceof Checking) destinationSecretKey = ((Checking) destinationAccount).getSecretKey();
+
+            if(destinationAccount instanceof Checking) destinationSecretKey =  ((Checking) destinationAccount).getSecretKey();
             if(destinationAccount instanceof Savings) destinationSecretKey = ((Savings) destinationAccount).getSecretKey();
             if(destinationAccount instanceof StudentChecking) destinationSecretKey = ((StudentChecking) destinationAccount).getSecretKey();
+
             if(destinationSecretKey != null && destinationSecretKey.equals(thirdPartyTransactionDTO.getSecretKey())) {
                 Transaction transaction = new Transaction(new Money(thirdPartyTransactionDTO.getAmount()), thirdParty, destinationAccount);
-                boolean processedTransaction = processFromThirdPartyTransaction(transaction);
-                if(processedTransaction) return transactionRepository.save(transaction);
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "The transaction cannot be processed");
+                return processFromThirdPartyTransaction(transaction);
             }
         }
         return null;
     }
 
-    //comprobamos que el usuario sea el dueño de la cuenta
+    //This method check if the user is the owner account.
     private boolean checkAccountOwner(Account account, User user ) {
         if(account.getPrimaryOwner().getUsername().equals(user.getUsername()) ||
                 (account.getSecondaryOwner() != null && account.getSecondaryOwner().getUsername().equals(user.getUsername()))) {
@@ -112,7 +107,7 @@ public class TransactionService implements ITransactionService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot operate this account");
     }
 
-    //comprobamos que la cuenta no esté bloqueada y tenga suficientes fondos
+    //This method check if the account is not blocked and has sufficient funds.
     private boolean checkSufficientFundsAndNotBlocked(Account account, BigDecimal quantity) {
         boolean blocked = false;
         if(account instanceof Checking) blocked = ((Checking) account).getStatus().equals(Status.FROZEN);
@@ -126,6 +121,7 @@ public class TransactionService implements ITransactionService {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You don't have sufficient funds");
     }
 
+
     private void checkFraud(Transaction transaction) {
         Calendar oneSecondBefore = Calendar.getInstance();
         oneSecondBefore.setTimeInMillis(transaction.getTransactionDate().getTime());
@@ -138,18 +134,20 @@ public class TransactionService implements ITransactionService {
         Calendar endDate = Calendar.getInstance();
         endDate.setTimeInMillis(transaction.getTransactionDate().getTime());
 
-        // Transactions made in 24 hours that total to more than 150% of the customers highest daily total transactions in any other 24 hour period.
-        //cogemos el maximo de transacciones que ha hecho una cuenta en 24 horas
-        Integer maxTransactions = transactionRepository.transactionsIn24HoursForAnyAccount(transaction.getOriginAccount().getId());
-        //ccogemos una lista con las transacciones que ha hecho la cuenta en 24 horas
-        List<Transaction> oneDayTransactions = transactionRepository.findByTransactionDateBetween(transaction.getOriginAccount().getId(), oneDayBefore.getTime(), endDate.getTime());
+        //Check the transactions made in 24 hours that total to more than 150% of the customers highest daily total transactions in any other 24 hour period.
+        //First, we get the max amount that the account transfers in 24h.
+        BigDecimal maxTransactions = transactionRepository.transactionsValueInAny24Hours(transaction.getOriginAccount().getId());
+        //Get the value of the transactions that make the account in 24h.
+        BigDecimal oneDayTransactionsValue = transactionRepository.transactionsValueInRange(transaction.getOriginAccount().getId(), oneDayBefore.getTime(), endDate.getTime());
 
-        if(maxTransactions != null && oneDayTransactions != null && oneDayTransactions.size() > (maxTransactions * 1.5)) {
+        //Add the value of the current transaction to the total value of transactions in the day for this account and then check if its bigger than 150% of max value.
+        if(oneDayTransactionsValue != null) oneDayTransactionsValue = oneDayTransactionsValue.add(transaction.getValue().getAmount());
+        if(maxTransactions != null && oneDayTransactionsValue != null && oneDayTransactionsValue.compareTo(maxTransactions.multiply(new BigDecimal("1.5"))) > 0) {
             freezeAccount(transaction.getOriginAccount());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account has been blocked by our fraud checking service");
         }
 
-        // More than 2 transactions occurring on a single account within a 1 second period.
+        // Check if more than 2 transactions occurring on a single account within a 1 second period.
         List<Transaction> transactionList = transactionRepository.findByTransactionDateBetween(transaction.getOriginAccount().getId(), oneSecondBefore.getTime(), endDate.getTime());
 
         if(transactionList.size() > 0) {
@@ -158,6 +156,7 @@ public class TransactionService implements ITransactionService {
         }
     }
 
+    //Check if the originAccount of the transaction is frozen.
     private void freezeAccount(Account account) {
         if(account instanceof Checking) ((Checking) account).setStatus(Status.FROZEN);
         if(account instanceof Savings) ((Savings) account).setStatus(Status.FROZEN);
@@ -165,8 +164,8 @@ public class TransactionService implements ITransactionService {
         accountRepository.save(account);
     }
 
-    private boolean processLocalTransaction(Transaction transaction) {
-        System.out.println("------------se llama al porcess local");
+    //This method subtract the value of the transaction to the origin account and add the same value to the destination account.
+    private Transaction processLocalTransaction(Transaction transaction) {
         BigDecimal originCurrentBalance = transaction.getOriginAccount().getBalance().getAmount();
         BigDecimal destinationCurrentBalance = transaction.getDestinationAccount().getBalance().getAmount();
 
@@ -178,28 +177,36 @@ public class TransactionService implements ITransactionService {
 
         accountRepository.saveAll(List.of(transaction.getOriginAccount(), transaction.getDestinationAccount()));
 
-        System.out.println("----------------acaba process");
-        return true;
+        if(transaction.getOriginAccount() instanceof Savings) transaction.setOriginAccount(applyPenaltyFee((Savings) transaction.getOriginAccount()));
+        if(transaction.getOriginAccount() instanceof Checking) transaction.setOriginAccount(applyPenaltyFee((Checking) transaction.getOriginAccount()));
+        return transactionRepository.save(transaction);
     }
 
-    private boolean processFromThirdPartyTransaction(Transaction transaction) {
+    //This method add the value of the transaction to the destination account when the sender is a thirdparty.
+    private Transaction processFromThirdPartyTransaction(Transaction transaction) {
         BigDecimal destinationCurrentBalance = transaction.getDestinationAccount().getBalance().getAmount();
         BigDecimal destinationNewBalance = destinationCurrentBalance.add(transaction.getValue().getAmount());
         transaction.getDestinationAccount().setBalance(new Money(destinationNewBalance, Currency.getInstance(transaction.getDestinationAccount().getBalance().getCurrency().getCurrencyCode())));
 
         accountRepository.save(transaction.getDestinationAccount());
-        return true;
+
+        return transactionRepository.save(transaction);
     }
 
-    private boolean processToThirdPartyTransaction(Transaction transaction) {
+    //This method subtract the value of the transaction to the origin account when the receiver is a thirdparty.
+    private Transaction processToThirdPartyTransaction(Transaction transaction) {
         BigDecimal originCurrentBalance = transaction.getOriginAccount().getBalance().getAmount();
         BigDecimal originNewBalance = originCurrentBalance.subtract(transaction.getValue().getAmount());
         transaction.getOriginAccount().setBalance(new Money(originNewBalance, Currency.getInstance(transaction.getOriginAccount().getBalance().getCurrency().getCurrencyCode())));
 
         accountRepository.save(transaction.getOriginAccount());
-        return true;
+
+        if(transaction.getOriginAccount() instanceof Savings) transaction.setOriginAccount(applyPenaltyFee((Savings) transaction.getOriginAccount()));
+        if(transaction.getOriginAccount() instanceof Checking) transaction.setOriginAccount(applyPenaltyFee((Checking) transaction.getOriginAccount()));
+        return transactionRepository.save(transaction);
     }
 
+    //If saving account drops below the minimumBalance, the penaltyFee should be deducted from the balance
     private Account applyPenaltyFee(Savings account){
         if(account.getBalance().getAmount().compareTo(account.getMinimumBalance().getAmount()) < 0){
             BigDecimal amount = account.getBalance().getAmount().subtract(account.getPenaltyFee().getAmount());
@@ -209,7 +216,7 @@ public class TransactionService implements ITransactionService {
         return account;
     }
 
-
+    //If checking account drops below the minimumBalance, the penaltyFee should be deducted from the balance
     private Account applyPenaltyFee(Checking account) {
         if(account.getBalance().getAmount().compareTo(account.getMinimumBalance().getAmount()) < 0){
             BigDecimal amount = account.getBalance().getAmount().subtract(account.getPenaltyFee().getAmount());

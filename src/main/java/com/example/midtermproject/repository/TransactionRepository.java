@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -14,7 +15,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Intege
     @Query(value = "SELECT * FROM transaction WHERE origin_account = :originAccount AND transaction_date BETWEEN :startDate AND :endDate", nativeQuery = true)
     public List<Transaction> findByTransactionDateBetween(@Param("originAccount") Integer originAccount, @Param("startDate") Date startDate, @Param("endDate")Date endDate);
 
-    @Query(value = "SELECT MAX(t.transactions) FROM (SELECT COUNT(*) AS transactions, DAY(transaction_date), origin_account FROM transaction " +
-            "WHERE origin_account != :originAccount GROUP BY origin_account, DAY(transaction_date)) t", nativeQuery = true)
-    public Integer transactionsIn24HoursForAnyAccount(@Param("originAccount") Integer originAccount);
+    @Query(value = "SELECT MAX(t.sum) FROM (SELECT SUM(amount) AS sum, DAY(transaction_date), origin_account FROM transaction " +
+            "WHERE origin_account = :originAccount GROUP BY DAY(transaction_date)) t", nativeQuery = true)
+    public BigDecimal transactionsValueInAny24Hours(@Param("originAccount") Integer originAccount);
+
+    @Query(value = "SELECT SUM(amount) AS sum FROM transaction WHERE origin_account = :originAccount AND transaction_date BETWEEN :startDate AND :endDate", nativeQuery = true)
+    public BigDecimal transactionsValueInRange(@Param("originAccount") Integer originAccount, @Param("startDate") Date startDate, @Param("endDate")Date endDate);
 }

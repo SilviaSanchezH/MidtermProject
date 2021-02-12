@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 
 public class CheckingDTO {
 
+    @NotNull
     private BigDecimal balance;
     @NotNull
     private Integer primaryOwnerId;

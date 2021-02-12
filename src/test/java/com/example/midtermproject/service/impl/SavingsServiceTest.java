@@ -69,6 +69,7 @@ class SavingsServiceTest {
         assertThrows(ResponseStatusException.class, ()-> savingsService.newSaving(savingsDTO));
     }
 
+
     @Test
     void newSaving_invalidInterestRateNewSavingAccount_Create() {
         SavingsDTO savingsDTO = new SavingsDTO(new BigDecimal("9888"), nino.getId(), null, "123", new BigDecimal("1000"), new BigDecimal(0.8));

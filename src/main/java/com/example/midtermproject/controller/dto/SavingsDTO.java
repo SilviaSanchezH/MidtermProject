@@ -13,6 +13,7 @@ import java.util.Currency;
 
 public class SavingsDTO {
 
+    @NotNull
     private BigDecimal balance;
 
     @NotNull

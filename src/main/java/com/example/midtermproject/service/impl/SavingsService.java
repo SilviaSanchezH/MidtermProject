@@ -23,11 +23,11 @@ public class SavingsService implements ISavingsService {
     private AccountHolderRepository accountHolderRepository;
 
     @Override
+    //Create a new savings account
     public Savings newSaving(SavingsDTO savingsDTO) {
         AccountHolder primaryOwner = accountHolderRepository.findById(savingsDTO.getPrimaryOwnerId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid primary owner"));
         AccountHolder secondaryOwner = savingsDTO.getSecondaryOwnerId() != null ? accountHolderRepository.findById(savingsDTO.getSecondaryOwnerId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Not valid primary owner")) : null;
 
-        //TODO: no me fio de las validaciones por eso hago esto, ya lo comprobaré gg
         if(savingsDTO.getInterestRate()==null) savingsDTO.setInterestRate(new BigDecimal("0.0025"));
         else if(savingsDTO.getInterestRate().compareTo(new BigDecimal("0.5")) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Interest rate must be lower or equal than 0.5");

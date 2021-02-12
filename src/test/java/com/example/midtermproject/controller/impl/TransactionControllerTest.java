@@ -3,9 +3,8 @@ package com.example.midtermproject.controller.impl;
 import com.example.midtermproject.controller.dto.ThirdPartyTransactionDTO;
 import com.example.midtermproject.controller.dto.TransactionDTO;
 import com.example.midtermproject.enums.Status;
-import com.example.midtermproject.model.Accounts.Account;
+import com.example.midtermproject.model.Accounts.CreditCard;
 import com.example.midtermproject.model.Accounts.Savings;
-import com.example.midtermproject.model.Accounts.Transaction;
 import com.example.midtermproject.model.Users.AccountHolder;
 import com.example.midtermproject.model.Users.ThirdParty;
 import com.example.midtermproject.model.shared.Address;
@@ -27,7 +26,6 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -60,9 +58,20 @@ class TransactionControllerTest {
 
     private MockMvc mockMvc;
 
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    public AccountHolder accountHolder;
+    public AccountHolder accountHolder2;
+    public AccountHolder accountHolder3;
+    public Savings savings;
+    public Savings savings2;
+    public CreditCard creditCard;
+    public ThirdParty thirdParty;
+
+    TransactionControllerTest() {
+    }
 
 
     @BeforeEach
@@ -70,19 +79,20 @@ class TransactionControllerTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         Address primaryAddress = new Address("castellana", "madrid", "28888");
         Address secondaryAddress = new Address("goya", "madrid", "28976");
-        AccountHolder accountHolder = new AccountHolder("Berto", "123", "Berto", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
-        AccountHolder accountHolder2 = new AccountHolder("Berta", "123", "Berta", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
+        accountHolder = new AccountHolder("Berto", "123", "Berto", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
+        accountHolder2 = new AccountHolder("Berta", "123", "Berta", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
+        accountHolder3 = new AccountHolder("Mercedes", "123", "Mercedes", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
 
-        accountHolderRepository.save(accountHolder);
-        accountHolderRepository.save(accountHolder2);
+        accountHolderRepository.saveAll(List.of(accountHolder,accountHolder2,accountHolder3));
 
-        Savings savings = new Savings (new Money(new BigDecimal("10000")) , accountHolder, accountHolder2, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
-        Savings savings2 = new Savings (new Money(new BigDecimal("4000")) , accountHolder2, accountHolder, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
+        savings = new Savings (new Money(new BigDecimal("10000")) , accountHolder, accountHolder2, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
+        savings2 = new Savings (new Money(new BigDecimal("4000")) , accountHolder2, accountHolder, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
+        creditCard = new CreditCard(new Money(new BigDecimal("30000")), accountHolder3, null, new Money(new BigDecimal("60000")), new BigDecimal("0.1"));
 
-        accountRepository.saveAll(List.of(savings, savings2));
+        accountRepository.saveAll(List.of(savings, savings2,creditCard));
 
         String password = passwordEncoder.encode("123");
-        ThirdParty thirdParty = new ThirdParty("Pacathird", password);
+        thirdParty = new ThirdParty("Pacathird", password);
         thirdPartyRepository.save(thirdParty);
 
     }
@@ -101,19 +111,19 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId = savings.getId();
+        Integer savingsId2 = savings2.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, savingsId2, "Berta", new BigDecimal("1000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isOk()).andReturn();
 
-       assertTrue((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount())==0);
+        assertEquals((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder).get(0).getBalance().getAmount()), 0);
     }
 
     @Test
@@ -122,18 +132,17 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Account savings = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0);
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId = savings.getId();
+        Integer savingsId2 = savings2.getId();
 
-        ((Savings) savings).setStatus(Status.FROZEN);
+        savings.setStatus(Status.FROZEN);
 
         accountRepository.save(savings);
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, savingsId2, "Berta", new BigDecimal("1000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -141,19 +150,19 @@ class TransactionControllerTest {
     }
 
     @Test
-    void newTransaction_CheckFraudLocalTransaction_notTransaction() throws Exception{
+    void newTransaction_checkTwoTransactionIn1Second_notTransaction() throws Exception{
 
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId = savings.getId();
+        Integer savingsId2 = savings2.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, savingsId2, "Berta", new BigDecimal("1000"), "USD");
         TransactionDTO transactionDTO2 = new TransactionDTO(savingsId, savingsId2, "Berta", new BigDecimal("1000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -161,8 +170,7 @@ class TransactionControllerTest {
 
         Thread.sleep(250);
 
-        String body2 = objectMapper.writeValueAsString(transactionDTO2);
-        MvcResult result2 = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -171,25 +179,14 @@ class TransactionControllerTest {
     }
 
     @Test
-    void newTransaction_CheckFraud150LocalTransaction_notTransaction() throws Exception{
+    void newTransaction_checkMaxAmountFraudLocalTransaction_notTransaction() throws Exception{
 
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Account savings = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0);
-        Account savings2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0);
-
         TransactionDTO transactionDTO = new TransactionDTO(savings.getId(), savings2.getId(), "Berta", new BigDecimal("1000"), "USD");
-        Transaction transaction = new Transaction(new Money(new BigDecimal(500)), savings2, savings);
-        transactionRepository.save(transaction);
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
-                post("/transaction").principal(testingAuthenticationToken)
-                        .content(body)
-                        .contentType(MediaType.APPLICATION_JSON)
-        ).andExpect(status().isOk()).andReturn();
-        Thread.sleep(1500); // Para evitar que salte el fraude por menos de 1 segundo
         mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
@@ -201,22 +198,21 @@ class TransactionControllerTest {
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isForbidden()).andReturn();
-
     }
 
     @Test
     void newTransaction_invalidUserLocalTransaction_notTransaction() throws Exception{
 
-        User user = new User("Agustino", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        User user = new User("Mercedes", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId = savings.getId();
+        Integer savingsId2 = savings2.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, savingsId2, "Berta", new BigDecimal("1000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -229,17 +225,35 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId2 = savings2.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(896, savingsId2, "Berta", new BigDecimal("1000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isBadRequest()).andReturn();
+    }
+
+    @Test
+    void newTransaction_invalidOriginAccountThatExistsLocalTransaction_notTransaction() throws Exception{
+
+        User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Integer savingsId2 = savings2.getId();
+        Integer creditCardId = creditCard.getId();
+
+        TransactionDTO transactionDTO = new TransactionDTO(creditCardId, savingsId2, "Berta", new BigDecimal("1000"), "USD");
+
+        String body = objectMapper.writeValueAsString(transactionDTO);
+       mockMvc.perform(
+                post("/transaction").principal(testingAuthenticationToken)
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isUnauthorized()).andReturn();
     }
 
     @Test
@@ -248,13 +262,12 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId = savings.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, 987, "Berta", new BigDecimal("1000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -262,27 +275,25 @@ class TransactionControllerTest {
     }
 
 
-
     //Al hacer una transferencia de 9900, como ha bajado del mínimum balance se le restan 40.
     @Test
     void newTransaction_LocalTransaction_applyPenaltyFee() throws Exception{
-
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId = savings.getId();
+        Integer savingsId2 = savings2.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, savingsId2, "Berta", new BigDecimal("9900"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isOk()).andReturn();
 
-        assertTrue((new BigDecimal("60")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount())==0);
+        assertEquals((new BigDecimal("60")).compareTo(accountRepository.findByPrimaryOwner(accountHolder).get(0).getBalance().getAmount()), 0);
     }
 
     @Test
@@ -291,13 +302,13 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer savingsId2 = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berta").get(0)).get(0).getId();
+        Integer savingsId = savings.getId();
+        Integer savingsId2 = savings2.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, savingsId2, "Berta", new BigDecimal("11000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -310,36 +321,34 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
+        Integer savingsId = savings.getId();
+        Integer thirdPartyId = thirdParty.getId();
 
-        //Integer originAccount, String destinationOwnerName, Integer thirdPartyDestinationId, BigDecimal quantity, String currency
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("1000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isOk()).andReturn();
 
-        assertTrue((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount())==0);
+        assertEquals((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder).get(0).getBalance().getAmount()), 0);
     }
 
     @Test
-    void newTransaction_transactionToThirdPartyNotSuffcientFunds_Nottransaction() throws Exception{
+    void newTransaction_notSufficientFundsTransactionToThirdParty_notTransaction() throws Exception{
 
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
+        Integer savingsId = savings.getId();
+        Integer thirdPartyId = thirdParty.getId();
 
-        //Integer originAccount, String destinationOwnerName, Integer thirdPartyDestinationId, BigDecimal quantity, String currency
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("100000"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -352,19 +361,19 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
+        Integer savingsId = savings.getId();
+        Integer thirdPartyId = thirdParty.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("9900"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
         ).andExpect(status().isOk()).andReturn();
 
-        assertTrue((new BigDecimal("60")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount())==0);
+        assertEquals((new BigDecimal("60")).compareTo(accountRepository.findByPrimaryOwner(accountHolder).get(0).getBalance().getAmount()), 0);
     }
 
     @Test
@@ -373,13 +382,12 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
+        Integer savingsId = savings.getId();
 
         TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", 654, new BigDecimal("9900"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -392,13 +400,10 @@ class TransactionControllerTest {
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
-        Integer savingsId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        Integer thirdPartyId = thirdPartyRepository.findByName("Pacathird").get().getId();
-
         TransactionDTO transactionDTO = new TransactionDTO(978, "Pacathird", 654, new BigDecimal("9900"), "USD");
 
         String body = objectMapper.writeValueAsString(transactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction").principal(testingAuthenticationToken)
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -407,14 +412,12 @@ class TransactionControllerTest {
 
     @Test
     void newThirdPartyTransaction_ThirdPartyTransaction_Transaction() throws Exception{
-
-        Integer accountId = accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getId();
-        ThirdParty thirdParty = thirdPartyRepository.findByName("Pacathird").get();
+        Integer accountId = savings.getId();
 
         ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(new BigDecimal("100"), accountId, "owo", thirdParty.getId());
 
         String body = objectMapper.writeValueAsString(thirdPartyTransactionDTO);
-        MvcResult result = mockMvc.perform(
+        mockMvc.perform(
                 post("/transaction/thirdparty")
                         .header("HASHED_KEY", "123")
                         .content(body)
@@ -422,6 +425,50 @@ class TransactionControllerTest {
         ).andExpect(status().isOk()).andReturn();
 
         assertEquals((new BigDecimal("10100")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount()), 0);
-
     }
+
+    @Test
+    void newThirdPartyTransaction_ThirdPartyTransactionToInvalidDestination_notTransaction() throws Exception{
+
+        ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(new BigDecimal("100"), 789, "owo", thirdParty.getId());
+
+        String body = objectMapper.writeValueAsString(thirdPartyTransactionDTO);
+        mockMvc.perform(
+                post("/transaction/thirdparty")
+                        .header("HASHED_KEY", "123")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isBadRequest()).andReturn();
+    }
+
+    @Test
+    void newThirdPartyTransaction_ThirdPartyTransactionInvalidThirdParty_notTransaction() throws Exception{
+        Integer accountId = savings.getId();
+
+        ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(new BigDecimal("100"), accountId, "owo", thirdParty.getId()+987);
+
+        String body = objectMapper.writeValueAsString(thirdPartyTransactionDTO);
+        mockMvc.perform(
+                post("/transaction/thirdparty")
+                        .header("HASHED_KEY", "123")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isBadRequest()).andReturn();
+    }
+
+    @Test
+    void newThirdPartyTransaction_ThirdPartyTransactionInvalidHashedKey_notTransaction() throws Exception{
+        Integer accountId = savings.getId();
+
+        ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(new BigDecimal("100"), accountId, "owo", thirdParty.getId()+987);
+
+        String body = objectMapper.writeValueAsString(thirdPartyTransactionDTO);
+        mockMvc.perform(
+                post("/transaction/thirdparty")
+                        .header("HASHED_KEY", "897")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isBadRequest()).andReturn();
+    }
+
 }

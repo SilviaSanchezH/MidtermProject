@@ -29,14 +29,13 @@ class AdminServiceTest {
 
     @AfterEach
     void tearDown() {
-        userRepository.deleteAll();
+        adminRepository.deleteAll();
     }
 
     @Test
     void newAdmin() {
         Admin admin = new Admin("ElAdmin", "123", "gustavo");
         adminService.newAdmin(admin);
-
-        assertEquals("ElAdmin", userRepository.findByUsername("ElAdmin").get().getUsername());
+        assertEquals("gustavo", adminRepository.findByName("gustavo").get(0).getName());
     }
 }

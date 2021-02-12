@@ -21,6 +21,7 @@ public class AdminService implements IAdminService {
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    //Create a new admin
     public Admin newAdmin(Admin admin) {
         String password = passwordEncoder.encode(admin.getPassword());
 

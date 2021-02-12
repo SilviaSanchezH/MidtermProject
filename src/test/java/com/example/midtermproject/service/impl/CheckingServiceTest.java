@@ -48,11 +48,12 @@ class CheckingServiceTest {
 
     @AfterEach
     void tearDown() {
+        accountRepository.deleteAll();
+        accountHolderRepository.deleteAll();
     }
 
     @Test
     void newChecking_newCheckingAccount_Create() {
-        // BigDecimal balance, @NotNull Integer primaryOwnerId, Integer secondaryOwnerId, @NotNull String secretKey
         Integer primaryOwnerId = nino.getId();
         Integer secondaryOwnerIc = nina.getId();
         CheckingDTO checkingDTO = new CheckingDTO(new BigDecimal("2000"), primaryOwnerId, secondaryOwnerIc, "123");
@@ -64,7 +65,6 @@ class CheckingServiceTest {
 
     @Test
     void newChecking_newCheckingAccountWithoutSecondaryOwner_Create() {
-        // BigDecimal balance, @NotNull Integer primaryOwnerId, Integer secondaryOwnerId, @NotNull String secretKey
         Integer primaryOwnerId = nino.getId();
         Integer secondaryOwnerIc = nina.getId();
         CheckingDTO checkingDTO = new CheckingDTO(new BigDecimal("2000"), primaryOwnerId, null, "123");
@@ -89,5 +89,6 @@ class CheckingServiceTest {
         CheckingDTO checkingDTO = new CheckingDTO(new BigDecimal("2000"), null, null, "123");
         assertThrows(InvalidDataAccessApiUsageException.class, ()->checkingService.newChecking(checkingDTO));
     }
+
 
 }

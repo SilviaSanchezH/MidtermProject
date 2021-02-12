@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.security.Principal;
 
 @RestController
@@ -28,7 +29,7 @@ public class AccountController {
 
     @PatchMapping("/account/balance/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void updateBalance(@PathVariable Integer id, @RequestBody BalanceDTO balanceDTO){
+    public void updateBalance(@PathVariable Integer id, @Valid @RequestBody BalanceDTO balanceDTO){
         accountService.updateBalance(id, balanceDTO.getAmount(), balanceDTO.getCurrency());
     }
 }

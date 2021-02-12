@@ -28,11 +28,10 @@ class ThirdPartyServiceTest {
     }
 
     @Test
-    void newThirdParty() {
+    void newThirdParty_validThirdPaty_thirdParty() {
         ThirdParty thirdParty = new ThirdParty("Silvia", "uwu");
         thirdPartyService.newThirdParty(thirdParty);
 
         assertEquals("Silvia", thirdPartyRepository.findByName("Silvia").get().getName());
-
     }
 }

@@ -33,6 +33,7 @@ public class AccountService implements IAccountService {
     @Autowired
     private UserRepository userRepository;
 
+    //This method allows to the admin update the balance account
     public void updateBalance(Integer id, BigDecimal amount, String currency) {
         Optional<Account> account = accountRepository.findById(id);
         if(account.isPresent()){
@@ -44,6 +45,7 @@ public class AccountService implements IAccountService {
     }
 
     @Override
+    //This method return the account corresponding to the id
     public Account getAccount(Integer id, String userName) {
         Account account = accountRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account for that id doesn't exists"));
         User user = userRepository.findByUsername(userName).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not valid userName"));
@@ -57,6 +59,7 @@ public class AccountService implements IAccountService {
     }
 
     @Override
+    //This method return the account balance corresponding to the id.
     public BalanceDTO getAccountBalance(Integer id, String userName) {
         Account account = accountRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account for that id doesn't exists"));
         User user = userRepository.findByUsername(userName).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not valid userName"));
@@ -69,12 +72,13 @@ public class AccountService implements IAccountService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You don't have access to this account");
     }
 
+    //Interest on savings accounts is added to the account annually at the rate of specified interestRate per year.
     private Account addSavingsAccountInterest(Savings account) {
-        //Aquí calculas el tiempo que ha pasado desde que se creó la cuenta hasta ahora
+        //Time since the account was created until now.
         int yearsSinceCreation = Period.between(account.getCreatedAt(), LocalDate.now()).getYears();
         int yearsToAdd = yearsSinceCreation;
 
-        //Aquí compruebas si alguna vez se han añadido intereses y calculas el tiempo que ha pasado hasta ahora.
+        //Check if if interest have ever been added and calculate the time until now.
         if(account.getInterestAdditionDate() != null) {
             int yearsSinceLastAddition = Period.between(account.getInterestAdditionDate(), LocalDate.now()).getYears();
             yearsToAdd = Math.min(yearsSinceLastAddition, yearsSinceCreation);
@@ -82,6 +86,7 @@ public class AccountService implements IAccountService {
         BigDecimal interestRate = account.getInterestRate();
         BigDecimal amount = account.getBalance().getAmount();
 
+        //Add interest to the saving account
         for(int i = 0; i < yearsToAdd; i++) {
             amount = amount.add(amount.multiply(interestRate));
         }
@@ -91,10 +96,13 @@ public class AccountService implements IAccountService {
         return accountRepository.save(account);
     }
 
+    ////Interest on savings accounts is added to the account annually at the rate of specified interestRate per month.
     private Account addCreditCardInterest(CreditCard account) {
+        //Time since the account was created until now.
         int monthsSinceCreation = Period.between(account.getCreatedAt(), LocalDate.now()).getMonths();
         int monthsToAdd = monthsSinceCreation;
 
+        //Check if if interest have ever been added and calculate the time until now.
         if(account.getInterestAdditionDate() != null) {
             int monthsSinceLastAddition = Period.between(account.getInterestAdditionDate(), LocalDate.now()).getMonths();
             monthsToAdd = Math.min(monthsSinceCreation, monthsSinceLastAddition);
@@ -102,6 +110,7 @@ public class AccountService implements IAccountService {
         BigDecimal interestRate = account.getInterestRate().divide(new BigDecimal("12"), 5, RoundingMode.HALF_UP);
         BigDecimal amount = account.getBalance().getAmount();
 
+        //Add interest to the saving account
         for(int i = 0; i < monthsToAdd; i++){
             amount = amount.add(amount.multiply(interestRate));
         }

@@ -58,4 +58,18 @@ class AccountHolderControllerTest {
         ).andExpect(status().isCreated()).andReturn();
         assertTrue(result.getResponse().getContentAsString().contains("yuyita"));
     }
+
+    @Test
+    void newAccountHolder_ValidAccountHolderWithoutSecondaryOwner_created() throws Exception{
+
+        AccountHolderDTO accountHolderDTO = new AccountHolderDTO("yuyita", "123", "yuyi", LocalDate.of(1990, 8, 4), "castellana", "madrid", "28888", null, null, null);
+        String body = objectMapper.writeValueAsString(accountHolderDTO);
+        MvcResult result = mockMvc.perform(
+                post("/user/accountholder")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isCreated()).andReturn();
+        assertTrue(result.getResponse().getContentAsString().contains("yuyita"));
+    }
+
 }

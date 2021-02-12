@@ -23,6 +23,7 @@ public class AccountHolderService implements IAccountHolderService {
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    //Create a new account holder
     public AccountHolder newAccountHolder(AccountHolderDTO accountHolderDTO) {
         Address primaryAddress = new Address(accountHolderDTO.getPrimaryStreet(), accountHolderDTO.getPrimaryCity(), accountHolderDTO.getPrimaryPostalCode());
         Address mailingAddress = null;

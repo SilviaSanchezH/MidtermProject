@@ -38,12 +38,11 @@ class AdminControllerTest {
 
     @AfterEach
     void tearDown() {
-
-
+        adminRepository.deleteAll();
     }
 
     @Test
-    void newAdmin() throws Exception {
+    void newAdmin_validAdmin_admin() throws Exception {
         Admin admin = new Admin("admin", "123", "admin");
         String body = objectMapper.writeValueAsString(admin);
         MvcResult result = mockMvc.perform(
@@ -54,4 +53,4 @@ class AdminControllerTest {
 
         assertTrue(result.getResponse().getContentAsString().contains("admin"));
     }
-    }
+}
