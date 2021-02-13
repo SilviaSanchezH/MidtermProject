@@ -1,12 +1,12 @@
-##BANKING SYSTEM
-###FIRST STEPS
+## BANKING SYSTEM
+### FIRST STEPS
 First, you have to grant privileges to your user in the database. Then, you have to execute the banking-system-one script.
 To start the server you have to execute this command: **mvn spring-boot:run**. If you want to test the programm, you must execute the banking-system-one-test script.
 
-###Programm Functionalities
+### Programm Functionalities
 In order to get access to the following methods you must authenticate using **Basic Authentication**.
 
-####GET Methods
+#### GET Methods
 
 ***Get:'/account/:id'***
 
@@ -16,7 +16,7 @@ This method return the account corresponding to the id that you introduce.
 
 This method return the account balance corresponding to the id that you introduce. 
 
-####POST Methods
+#### POST Methods
 
 ***Post:'/user/accountholder'***
 
@@ -107,7 +107,7 @@ You **MUST** include in the request header the field: `HASHED_KEY: value`
     "secretKey": "string"
 }
 ```
-####PATCH Methods
+#### PATCH Methods
 ***Patch:'account/balance/:id'***
 This method allows to the admin update the balance account. Body:
 ```json5
@@ -116,5 +116,5 @@ This method allows to the admin update the balance account. Body:
     "currency": "EUR | USD | GBP | ..."
 }
 ```
-###Author
+### Author
 Silvia Sánchez Heras
