@@ -6,6 +6,7 @@ import com.example.midtermproject.enums.Status;
 import com.example.midtermproject.model.Accounts.Checking;
 import com.example.midtermproject.model.Accounts.CreditCard;
 import com.example.midtermproject.model.Accounts.Savings;
+import com.example.midtermproject.model.Accounts.StudentChecking;
 import com.example.midtermproject.model.Users.AccountHolder;
 import com.example.midtermproject.model.Users.ThirdParty;
 import com.example.midtermproject.model.shared.Address;
@@ -58,12 +59,14 @@ class TransactionServiceTest {
     public AccountHolder paca;
     public AccountHolder willirex;
     public AccountHolder mercedes;
+    public AccountHolder bebe;
     public Savings savings;
     public Savings savings2;
     public CreditCard creditCard;
     public Checking checking;
     public ThirdParty thirdParty;
     public ThirdParty thirdParty2;
+    public StudentChecking studentChecking;
 
     private final CountDownLatch waiter = new CountDownLatch(1);
 
@@ -75,15 +78,17 @@ class TransactionServiceTest {
         paca  = new AccountHolder("Paca", "123", "Paca", LocalDate.of(1955, 6,8), primaryAddress, secondaryAddress);
         willirex = new AccountHolder("Willirex", "123", "Willi", LocalDate.of(1992,8,4), primaryAddress, secondaryAddress);
         mercedes = new AccountHolder("Mercedes", "123", "Mercedes", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
+        bebe = new AccountHolder("Jaime", "123", "Jaime", LocalDate.of(2000,8,4), primaryAddress, secondaryAddress);
 
-        accountHolderRepository.saveAll(List.of(paco, paca, willirex, mercedes));
+        accountHolderRepository.saveAll(List.of(paco, paca, willirex, mercedes, bebe));
 
         savings = new Savings (new Money(new BigDecimal("78000")) , paco, paca, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
         savings2 = new Savings (new Money(new BigDecimal("4000")) , paca, paco, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
         creditCard = new CreditCard(new Money(new BigDecimal("30000")), willirex, null, new Money(new BigDecimal("60000")), new BigDecimal("0.1"));
         checking = new Checking(new Money(new BigDecimal("78000")), mercedes, null, "owo");
+        studentChecking = new StudentChecking(new Money(new BigDecimal("5000")), bebe, null, "owo");
 
-        accountRepository.saveAll(List.of(savings, savings2, creditCard, checking));
+        accountRepository.saveAll(List.of(savings, savings2, creditCard, checking, studentChecking));
 
         String password = passwordEncoder.encode("123");
         thirdParty = new ThirdParty("Pacathird", password);
@@ -129,6 +134,36 @@ class TransactionServiceTest {
 
         assertEquals((new BigDecimal("77500")).compareTo(accountRepository.findByPrimaryOwner(mercedes).get(0).getBalance().getAmount()), 0);
         assertEquals((new BigDecimal("30500")).compareTo(accountRepository.findByPrimaryOwner(willirex).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_localTransactionFromStudentAccount_transaction() {
+
+        Integer originAccountId = studentChecking.getId();
+        Integer destinationAccountId = creditCard.getId();
+        String username = bebe.getUsername();
+        BigDecimal quantity = new BigDecimal("500");
+
+        TransactionDTO transactionDTO = new TransactionDTO(originAccountId, destinationAccountId, willirex.getName(), quantity, "USD");
+        transactionService.newTransaction(transactionDTO, username);
+
+        assertEquals((new BigDecimal("4500")).compareTo(accountRepository.findByPrimaryOwner(bebe).get(0).getBalance().getAmount()), 0);
+        assertEquals((new BigDecimal("30500")).compareTo(accountRepository.findByPrimaryOwner(willirex).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_localTransactionFromCreditAccount_transaction() {
+
+        Integer originAccountId = creditCard.getId();
+        Integer destinationAccountId = savings2.getId();
+        String username = willirex.getUsername();
+        BigDecimal quantity = new BigDecimal("500");
+
+        TransactionDTO transactionDTO = new TransactionDTO(originAccountId, destinationAccountId, paca.getName(), quantity, "USD");
+        transactionService.newTransaction(transactionDTO, username);
+
+        assertEquals((new BigDecimal("29500")).compareTo(accountRepository.findByPrimaryOwner(willirex).get(0).getBalance().getAmount()), 0);
+        assertEquals((new BigDecimal("4500")).compareTo(accountRepository.findByPrimaryOwner(paca).get(0).getBalance().getAmount()), 0);
     }
 
 
@@ -291,7 +326,7 @@ class TransactionServiceTest {
         TransactionDTO transactionDTO2 = new TransactionDTO(originAccountId, destinationAccountId, paca.getName(), new BigDecimal("2"), "USD");
         transactionService.newTransaction(transactionDTO, username);
 
-        waiter.await(100, TimeUnit.MILLISECONDS);
+        waiter.await(100000, TimeUnit.NANOSECONDS);
 
         assertThrows(ResponseStatusException.class, ()-> transactionService.newTransaction(transactionDTO2, username));
     }
@@ -314,7 +349,7 @@ class TransactionServiceTest {
 
 
     @Test
-    void newTransaction_localTransactionToThirdParty_transaction() {
+    void newTransaction_localTransactionToThirdPartyFromSavingAccount_transaction() {
 
         Integer originAccountId = savings.getId();
         String destinationThirdPartyName = thirdParty.getName();
@@ -326,6 +361,51 @@ class TransactionServiceTest {
         transactionService.newTransaction(transactionDTO, username);
 
         assertEquals((new BigDecimal("77500")).compareTo(accountRepository.findByPrimaryOwner(paco).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_localTransactionToThirdPartyFromCheckingAccount_transaction() {
+
+        Integer originAccountId = checking.getId();
+        String destinationThirdPartyName = thirdParty.getName();
+        Integer thirdPartyDestinationId = thirdParty.getId();
+        String username = mercedes.getUsername();
+        BigDecimal quantity = new BigDecimal("500");
+
+        TransactionDTO transactionDTO = new TransactionDTO(originAccountId, destinationThirdPartyName, thirdPartyDestinationId, quantity, "USD");
+        transactionService.newTransaction(transactionDTO, username);
+
+        assertEquals((new BigDecimal("77500")).compareTo(accountRepository.findByPrimaryOwner(mercedes).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_localTransactionToThirdPartyFromStudentCheckingAccount_transaction() {
+
+        Integer originAccountId = studentChecking.getId();
+        String destinationThirdPartyName = thirdParty.getName();
+        Integer thirdPartyDestinationId = thirdParty.getId();
+        String username = bebe.getUsername();
+        BigDecimal quantity = new BigDecimal("500");
+
+        TransactionDTO transactionDTO = new TransactionDTO(originAccountId, destinationThirdPartyName, thirdPartyDestinationId, quantity, "USD");
+        transactionService.newTransaction(transactionDTO, username);
+
+        assertEquals((new BigDecimal("4500")).compareTo(accountRepository.findByPrimaryOwner(bebe).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_localTransactionToThirdPartyFromCreditCardAccount_transaction() {
+
+        Integer originAccountId = creditCard.getId();
+        String destinationThirdPartyName = thirdParty.getName();
+        Integer thirdPartyDestinationId = thirdParty.getId();
+        String username = willirex.getUsername();
+        BigDecimal quantity = new BigDecimal("500");
+
+        TransactionDTO transactionDTO = new TransactionDTO(originAccountId, destinationThirdPartyName, thirdPartyDestinationId, quantity, "USD");
+        transactionService.newTransaction(transactionDTO, username);
+
+        assertEquals((new BigDecimal("29500")).compareTo(accountRepository.findByPrimaryOwner(willirex).get(0).getBalance().getAmount()), 0);
     }
 
 
@@ -373,7 +453,7 @@ class TransactionServiceTest {
 
 
     @Test
-    void newThirdPartyTransaction_transactionToLocalAccountFromThirdParty_transaction() {
+    void newThirdPartyTransaction_transactionToSavingAccountFromThirdParty_transaction() {
 
         Integer destinationAccountId = savings2.getId();
         String secretKey = savings2.getSecretKey();
@@ -384,8 +464,37 @@ class TransactionServiceTest {
         transactionService.newFromThirdPartyTransaction(thirdPartyTransactionDTO, "123");
 
         assertEquals((new BigDecimal("4500")).compareTo(accountRepository.findByPrimaryOwner(paca).get(0).getBalance().getAmount()), 0);
-
     }
+
+    @Test
+    void newThirdPartyTransaction_transactionToCheckingAccountFromThirdParty_transaction() {
+
+        Integer destinationAccountId = checking.getId();
+        String secretKey = checking.getSecretKey();
+        BigDecimal quantity = new BigDecimal("500");
+        Integer thirdPartyId = thirdParty.getId();
+
+        ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(quantity, destinationAccountId, secretKey, thirdPartyId);
+        transactionService.newFromThirdPartyTransaction(thirdPartyTransactionDTO, "123");
+
+        assertEquals((new BigDecimal("78500")).compareTo(accountRepository.findByPrimaryOwner(mercedes).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newThirdPartyTransaction_transactionToStudentCheckingAccountFromThirdParty_transaction() {
+
+        Integer destinationAccountId = studentChecking.getId();
+        String secretKey = studentChecking.getSecretKey();
+        BigDecimal quantity = new BigDecimal("500");
+        Integer thirdPartyId = thirdParty.getId();
+
+        ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(quantity, destinationAccountId, secretKey, thirdPartyId);
+        transactionService.newFromThirdPartyTransaction(thirdPartyTransactionDTO, "123");
+
+        assertEquals((new BigDecimal("5500")).compareTo(accountRepository.findByPrimaryOwner(bebe).get(0).getBalance().getAmount()), 0);
+    }
+
+
 
     @Test
     void newThirdPartyTransaction_invalidSecretKeyTransactionToLocalAccountFromThirdParty_transaction() {

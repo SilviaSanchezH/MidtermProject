@@ -6,6 +6,7 @@ import com.example.midtermproject.enums.Status;
 import com.example.midtermproject.model.Accounts.Checking;
 import com.example.midtermproject.model.Accounts.CreditCard;
 import com.example.midtermproject.model.Accounts.Savings;
+import com.example.midtermproject.model.Accounts.StudentChecking;
 import com.example.midtermproject.model.Users.AccountHolder;
 import com.example.midtermproject.model.Users.ThirdParty;
 import com.example.midtermproject.model.shared.Address;
@@ -67,11 +68,13 @@ class TransactionControllerTest {
     public AccountHolder accountHolder2;
     public AccountHolder accountHolder3;
     public AccountHolder accountHolder4;
+    public AccountHolder bebe;
     public Savings savings;
     public Savings savings2;
     public CreditCard creditCard;
     public Checking checking;
     public ThirdParty thirdParty;
+    public StudentChecking studentChecking;
 
 
     @BeforeEach
@@ -83,15 +86,16 @@ class TransactionControllerTest {
         accountHolder2 = new AccountHolder("Berta", "123", "Berta", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
         accountHolder3 = new AccountHolder("Mercedes", "123", "Mercedes", LocalDate.of(1950, 9,8), primaryAddress, secondaryAddress);
         accountHolder4 = new AccountHolder("Willirex", "123", "Willi", LocalDate.of(1992,8,4), primaryAddress, secondaryAddress);
+        bebe = new AccountHolder("Jaime", "123", "Jaime", LocalDate.of(2000,8,4), primaryAddress, secondaryAddress);
 
-        accountHolderRepository.saveAll(List.of(accountHolder,accountHolder2,accountHolder3, accountHolder4));
+        accountHolderRepository.saveAll(List.of(accountHolder,accountHolder2,accountHolder3, accountHolder4, bebe));
 
         savings = new Savings (new Money(new BigDecimal("10000")) , accountHolder, accountHolder2, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
         savings2 = new Savings (new Money(new BigDecimal("4000")) , accountHolder2, accountHolder, "owo", new Money(new BigDecimal("200")), new BigDecimal("0.2"));
         creditCard = new CreditCard(new Money(new BigDecimal("30000")), accountHolder3, null, new Money(new BigDecimal("60000")), new BigDecimal("0.1"));
         checking = new Checking(new Money(new BigDecimal("10000")), accountHolder4, null, "owo");
-
-        accountRepository.saveAll(List.of(savings, savings2,creditCard, checking));
+        studentChecking = new StudentChecking(new Money(new BigDecimal("5000")), bebe, null, "owo");
+        accountRepository.saveAll(List.of(savings, savings2,creditCard, checking, studentChecking));
 
         String password = passwordEncoder.encode("123");
         thirdParty = new ThirdParty("Pacathird", password);
@@ -149,6 +153,50 @@ class TransactionControllerTest {
 
         assertEquals((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder4).get(0).getBalance().getAmount()), 0);
         assertEquals((new BigDecimal("31000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder3).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_LocalTransactionFromStudentCheckingAccount_Transaction() throws Exception{
+
+        User user = new User("Jaime", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Integer checkingId = studentChecking.getId();
+        Integer creditcardId = creditCard.getId();
+
+        TransactionDTO transactionDTO = new TransactionDTO(checkingId, creditcardId, "Mercedes", new BigDecimal("1000"), "USD");
+
+        String body = objectMapper.writeValueAsString(transactionDTO);
+        mockMvc.perform(
+                post("/transaction").principal(testingAuthenticationToken)
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("4000")).compareTo(accountRepository.findByPrimaryOwner(bebe).get(0).getBalance().getAmount()), 0);
+        assertEquals((new BigDecimal("31000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder3).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_LocalTransactionFromCreditAccount_Transaction() throws Exception{
+
+        User user = new User("Mercedes", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Integer checkingId = checking.getId();
+        Integer creditcardId = creditCard.getId();
+
+        TransactionDTO transactionDTO = new TransactionDTO(creditcardId, checkingId, "Willi", new BigDecimal("1000"), "USD");
+
+        String body = objectMapper.writeValueAsString(transactionDTO);
+        mockMvc.perform(
+                post("/transaction").principal(testingAuthenticationToken)
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("29000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder3).get(0).getBalance().getAmount()), 0);
+        assertEquals((new BigDecimal("11000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder4).get(0).getBalance().getAmount()), 0);
     }
 
     @Test
@@ -319,7 +367,7 @@ class TransactionControllerTest {
 
 
     @Test
-    void newTransaction_LocalTransaction_applyPenaltyFee() throws Exception{
+    void newTransaction_LocalTransaction_applyPenaltyFeeSavingAccount() throws Exception{
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
 
@@ -336,6 +384,26 @@ class TransactionControllerTest {
         ).andExpect(status().isOk()).andReturn();
 
         assertEquals((new BigDecimal("60")).compareTo(accountRepository.findByPrimaryOwner(accountHolder).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_LocalTransaction_applyPenaltyFeeCheckingAccount() throws Exception{
+        User user = new User("Willirex", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Integer checkingId = checking.getId();
+        Integer savingsId2 = savings2.getId();
+
+        TransactionDTO transactionDTO = new TransactionDTO(checkingId, savingsId2, "Berta", new BigDecimal("9900"), "USD");
+
+        String body = objectMapper.writeValueAsString(transactionDTO);
+        mockMvc.perform(
+                post("/transaction").principal(testingAuthenticationToken)
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("60")).compareTo(accountRepository.findByPrimaryOwner(accountHolder4).get(0).getBalance().getAmount()), 0);
     }
 
     @Test
@@ -358,7 +426,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void newTransaction_transactionToThirdParty_Transaction() throws Exception{
+    void newTransaction_transactionToThirdPartyFromSavingAccount_Transaction() throws Exception{
 
         User user = new User("Berto", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
         TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
@@ -376,6 +444,69 @@ class TransactionControllerTest {
         ).andExpect(status().isOk()).andReturn();
 
         assertEquals((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_transactionToThirdPartyFromCheckingAccount_Transaction() throws Exception{
+
+        User user = new User("Willirex", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Integer checkingId = checking.getId();
+        Integer thirdPartyId = thirdParty.getId();
+
+        TransactionDTO transactionDTO = new TransactionDTO(checkingId, "Pacathird", thirdPartyId, new BigDecimal("1000"), "USD");
+
+        String body = objectMapper.writeValueAsString(transactionDTO);
+        mockMvc.perform(
+                post("/transaction").principal(testingAuthenticationToken)
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("9000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder4).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_transactionToThirdPartyFromStudentCheckingAccount_Transaction() throws Exception{
+
+        User user = new User("Jaime", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Integer savingsId = studentChecking.getId();
+        Integer thirdPartyId = thirdParty.getId();
+
+        TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("1000"), "USD");
+
+        String body = objectMapper.writeValueAsString(transactionDTO);
+        mockMvc.perform(
+                post("/transaction").principal(testingAuthenticationToken)
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("4000")).compareTo(accountRepository.findByPrimaryOwner(bebe).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newTransaction_transactionToThirdPartyFromCreditCardAccount_Transaction() throws Exception{
+
+        User user = new User("Mercedes", "123", AuthorityUtils.createAuthorityList("ACCOUNT_HOLDER"));
+        TestingAuthenticationToken testingAuthenticationToken = new TestingAuthenticationToken(user,null);
+
+        Integer savingsId = creditCard.getId();
+        Integer thirdPartyId = thirdParty.getId();
+
+        TransactionDTO transactionDTO = new TransactionDTO(savingsId, "Pacathird", thirdPartyId, new BigDecimal("1000"), "USD");
+
+        String body = objectMapper.writeValueAsString(transactionDTO);
+        mockMvc.perform(
+                post("/transaction").principal(testingAuthenticationToken)
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("29000")).compareTo(accountRepository.findByPrimaryOwner(accountHolder3).get(0).getBalance().getAmount()), 0);
     }
 
 
@@ -473,7 +604,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void newThirdPartyTransaction_ThirdPartyTransaction_Transaction() throws Exception{
+    void newThirdPartyTransaction_ThirdPartyTransactionToSavingAccount_Transaction() throws Exception{
         Integer accountId = savings.getId();
 
         ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(new BigDecimal("100"), accountId, "owo", thirdParty.getId());
@@ -487,6 +618,40 @@ class TransactionControllerTest {
         ).andExpect(status().isOk()).andReturn();
 
         assertEquals((new BigDecimal("10100")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Berto").get(0)).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newThirdPartyTransaction_ThirdPartyTransactionToCheckingAccount_Transaction() throws Exception{
+        Integer accountId = checking.getId();
+
+        ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(new BigDecimal("100"), accountId, "owo", thirdParty.getId());
+
+        String body = objectMapper.writeValueAsString(thirdPartyTransactionDTO);
+        mockMvc.perform(
+                post("/transaction/thirdparty")
+                        .header("HASHED_KEY", "123")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("10100")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Willi").get(0)).get(0).getBalance().getAmount()), 0);
+    }
+
+    @Test
+    void newThirdPartyTransaction_ThirdPartyTransactionToStudentAccount_Transaction() throws Exception{
+        Integer accountId = studentChecking.getId();
+
+        ThirdPartyTransactionDTO thirdPartyTransactionDTO = new ThirdPartyTransactionDTO(new BigDecimal("100"), accountId, "owo", thirdParty.getId());
+
+        String body = objectMapper.writeValueAsString(thirdPartyTransactionDTO);
+        mockMvc.perform(
+                post("/transaction/thirdparty")
+                        .header("HASHED_KEY", "123")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk()).andReturn();
+
+        assertEquals((new BigDecimal("5100")).compareTo(accountRepository.findByPrimaryOwner(accountHolderRepository.findByName("Jaime").get(0)).get(0).getBalance().getAmount()), 0);
     }
 
     @Test
