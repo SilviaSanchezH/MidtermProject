@@ -59,13 +59,13 @@ public class TransactionService implements ITransactionService {
 
         //Check if the user is the owner of the origin account and if he has sufficients funds and not is blocked and finally do the transaction.
         if(checkAccountOwner(originAccount, loggedUser) && checkSufficientFundsAndNotBlocked(originAccount, transactionDTO.getQuantity())) {
-            if(destinationAccount.isPresent()) {
+            if(destinationAccount.isPresent() && checkDestinationOwnerName(destinationAccount.get(), transactionDTO.getDestinationOwnerName())) {
                 Transaction transaction = new Transaction(new Money(transactionDTO.getQuantity(), Currency.getInstance(transactionDTO.getCurrency())),
                         originAccount, destinationAccount.get());
 
                 checkFraud(transaction);
                 return processLocalTransaction(transaction);
-            } else if(destinationThirdParty.isPresent()) {
+            } else if(destinationThirdParty.isPresent() && checkDestinationOwnerNameThirdParty(destinationThirdParty.get(), transactionDTO.getDestinationOwnerName())) {
                 Transaction transaction = new Transaction(new Money(transactionDTO.getQuantity(), Currency.getInstance(transactionDTO.getCurrency())),
                         originAccount, destinationThirdParty.get());
 
@@ -93,6 +93,8 @@ public class TransactionService implements ITransactionService {
             if(destinationSecretKey != null && destinationSecretKey.equals(thirdPartyTransactionDTO.getSecretKey())) {
                 Transaction transaction = new Transaction(new Money(thirdPartyTransactionDTO.getAmount()), thirdParty, destinationAccount);
                 return processFromThirdPartyTransaction(transaction);
+            }else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The secret key don't match with the destination account");
             }
         }
         return null;
@@ -105,6 +107,22 @@ public class TransactionService implements ITransactionService {
             return true;
         }
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot operate this account");
+    }
+
+    //TODO NO SE SI ESTO ESTA BIEN
+    private boolean checkDestinationOwnerName(Account account, String destinationName) {
+        if (account.getPrimaryOwner().getName().equals(destinationName) ||
+                (account.getSecondaryOwner() != null && account.getSecondaryOwner().getName().equals(destinationName))) {
+            return true;
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The destination owner name doesn't match with the destinatition account Id");
+    }
+
+    private boolean checkDestinationOwnerNameThirdParty(ThirdParty thirdParty, String destinationName){
+        if(thirdParty.getName().equals(destinationName)){
+            return true;
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The destination owner name doesn't match with the destinatition third party Id");
     }
 
     //This method check if the account is not blocked and has sufficient funds.
