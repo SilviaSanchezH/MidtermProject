@@ -57,7 +57,8 @@ public class TransactionService implements ITransactionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction cannot have more than one destination");
         }
 
-        //Check if the user is the owner of the origin account and if he has sufficients funds and not is blocked and finally do the transaction.
+        //Check if the user is the owner of the origin account and if he has sufficient funds and not is blocked and finally do the transaction.
+        //Also check if the name of the destination owner matches with your account.
         if(checkAccountOwner(originAccount, loggedUser) && checkSufficientFundsAndNotBlocked(originAccount, transactionDTO.getQuantity())) {
             if(destinationAccount.isPresent() && checkDestinationOwnerName(destinationAccount.get(), transactionDTO.getDestinationOwnerName())) {
                 Transaction transaction = new Transaction(new Money(transactionDTO.getQuantity(), Currency.getInstance(transactionDTO.getCurrency())),
@@ -109,7 +110,7 @@ public class TransactionService implements ITransactionService {
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot operate this account");
     }
 
-    //TODO NO SE SI ESTO ESTA BIEN
+    //This method checkif the name of the destination owner matches with your account.
     private boolean checkDestinationOwnerName(Account account, String destinationName) {
         if (account.getPrimaryOwner().getName().equals(destinationName) ||
                 (account.getSecondaryOwner() != null && account.getSecondaryOwner().getName().equals(destinationName))) {
